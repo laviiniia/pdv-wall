@@ -1,38 +1,36 @@
-# Comanda
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-App Expo de gestão de comandas (cliente + equipe) com restaurantes por GPS e dados no Supabase.
+## Getting Started
 
-## 1. Supabase
-
-1. Crie um projeto em [supabase.com](https://supabase.com).
-2. Em **Authentication → Providers → Email**, desative **Confirm email** no MVP (senão o cadastro não cria sessão na hora).
-3. SQL Editor: cole e rode [`supabase/schema.sql`](supabase/schema.sql).
-4. Copie a URL e a `anon` key em **Project Settings → API**.
-
-## 2. App
+First, run the development server:
 
 ```bash
-cp .env.example .env
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-Preencha:
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-- `EXPO_PUBLIC_SUPABASE_URL`
-- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-```bash
-npx expo start
-```
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-Abra no Expo Go (GPS funciona melhor no celular).
+## Learn More
 
-## Contas
+To learn more about Next.js, take a look at the following resources:
 
-- **Cliente:** cadastro normal, sem código.
-- **Equipe:** no cadastro, informe o código do salão:
-  - Luma da Esquina → `LUMA26`
-  - Taberna do Mercado → `TABERNA26`
-  - Casa Brasa → `BRASA26`
-  - Maré de Copo → `MARE26`
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-O cliente lista restaurantes por distância, abre comanda e lança itens. A equipe vê o mesmo em tempo real, edita, cancela e finaliza. Se o aparelho da equipe estiver a mais de 200 m do salão, aparece um aviso (não bloqueia).
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
