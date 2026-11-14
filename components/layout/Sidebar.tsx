@@ -9,16 +9,32 @@ import { cn } from "@/lib/utils";
 
 type UsuarioSidebar = { nome: string; email: string; role: string };
 
-export function Sidebar({ usuario, hrefsPermitidos }: { usuario: UsuarioSidebar; hrefsPermitidos: string[] }) {
+export function Sidebar({
+  usuario,
+  hrefsPermitidos,
+  nomeEmpresa,
+}: {
+  usuario: UsuarioSidebar;
+  hrefsPermitidos: string[];
+  nomeEmpresa: string;
+}) {
+  const iniciais = nomeEmpresa
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]!.toUpperCase())
+    .join("");
   const pathname = usePathname();
 
   return (
     <aside className="hidden md:flex w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
       <div className="flex h-14 items-center gap-2 border-b px-4">
-        <span className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
-          PW
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
+          {iniciais || "PW"}
         </span>
-        <span className="font-semibold">PDV Wall</span>
+        <span className="truncate font-semibold" title={nomeEmpresa}>
+          {nomeEmpresa}
+        </span>
       </div>
       <nav className="flex flex-1 flex-col gap-0.5 p-2">
         {NAVEGACAO.filter((i) => hrefsPermitidos.includes(i.href)).map(({ href, titulo, icone: Icone }) => {

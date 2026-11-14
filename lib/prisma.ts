@@ -10,7 +10,11 @@ function createPrismaClient() {
   if (!connectionString) {
     throw new Error("DATABASE_URL não definida. Veja .env.example.");
   }
-  return new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+  // O banco local do `prisma dev` aceita uma conexão por vez: com mais de uma no pool,
+  // ele derruba a anterior (erro P1017 "Server has closed the connection").
+  // Em Supabase/produção, deixe DATABASE_POOL_MAX vazio para usar o padrão do driver.
+  const max = Number(process.env.DATABASE_POOL_MAX) || undefined;
+  return new PrismaClient({ adapter: new PrismaPg({ connectionString, max }) });
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();

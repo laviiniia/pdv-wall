@@ -7,7 +7,7 @@
 | # | Módulo | Rota | Status |
 | --- | --- | --- | --- |
 | 3 | [Autenticação](modulos/MODULO_3_AUTENTICACAO.md) | `/login`, `/admin/usuarios` | Pronto: login/logout, proteção de rotas, recuperação/troca de senha e gestão de usuários |
-| 4 | [Configurações](modulos/MODULO_4_CONFIGURACOES.md) | `/configuracoes` | A fazer |
+| 4 | [Configurações](modulos/MODULO_4_CONFIGURACOES.md) | `/configuracoes` | Empresa, Vendas, Estoque e Financeiro prontos; falta notificações, interface, backups, integrações |
 | 2.1 | [Gestão de Produtos](modulos/MODULO_2_1_GESTAO_PRODUTOS.md) | `/produtos` | Schema pronto, listagem |
 | 2.2 | [Vendas PDV](modulos/MODULO_2_2_VENDAS_PDV.md) | `/vendas` | A fazer |
 | 2.3 | [Pedidos Online / QR Code](modulos/MODULO_2_3_PEDIDOS_ONLINE_QR_CODE.md) | `/pedidos-online` | A fazer |
@@ -30,6 +30,11 @@ A documentação foi escrita para Next.js 14 / Prisma 5. O projeto usa versões 
 - **Auth:** a documentação cita tanto Supabase Auth quanto JWT próprio. O Módulo 3 especifica JWT próprio (`jose` + `bcryptjs`), que é o caminho adotado.
 - **Onde fica o token:** a documentação sugere `localStorage` + header `Authorization`. O código guarda o JWT num **cookie httpOnly**, que o JavaScript da página não consegue ler (protege contra roubo por XSS). A sessão dura 8h, ou 7 dias com "manter conectado". Ainda não há refresh token separado: ao expirar, a pessoa faz login de novo.
 - **Recuperar senha:** a resposta é sempre a mesma ("se o e-mail estiver cadastrado...") para não revelar quem tem conta; a documentação previa avisar quando o e-mail não existe. A rota é `/redefinir-senha`, não `/reset-senha`. O token é guardado só como hash SHA-256 (sem a coluna `token_plain`) e sessões antigas são derrubadas comparando o `iat` do JWT com `password_changed_at`.
+- **Configurações (Módulo 4):**
+  - uma linha por seção na tabela `configuracoes` (`chave` = `empresa`, `vendas`, `estoque`, `financeiro`), sem a coluna `tipo` (a chave já é a seção); formato e valores padrão definidos em `lib/validations/configuracoes.schema.ts`. Nos outros módulos, leia com `getConfig("vendas")`: sempre vem completo, com os padrões para o que nunca foi salvo;
+  - permissão: todos visualizam; admin edita tudo; gerente edita só Estoque (`configuracoes.editar_operacional`). Vendas é só admin porque contém os limites de desconto do próprio gerente;
+  - descontos máximos em **percentual** (a doc também cita valor em R$; dá para acrescentar quando o PDV existir);
+  - ainda fora: notificações (SMTP/SMS próprios — hoje o e-mail usa Resend via `.env`), customização de interface/menu, backups (o Supabase já faz), integrações, upload de logo (depende do Supabase Storage), busca de CEP e tabela `integracoes`.
 - **Gestão de usuários:**
   - não há "deletar": usuários são **desativados** (preserva histórico de vendas e auditoria);
   - senha inicial em 3 modos: link por e-mail (padrão, 72h), senha temporária gerada (mostrada uma vez) ou definida pelo admin — nos dois últimos a troca é obrigatória no 1º acesso (`deve_trocar_senha`);

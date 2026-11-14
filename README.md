@@ -18,6 +18,8 @@ npm run db:start            # sobe um Postgres local (sem Docker) e imprime a UR
 
 Se as portas impressas forem diferentes das do `.env.local`, atualize o `DATABASE_URL` e o `SHADOW_DATABASE_URL` (o servidor local expõe um banco separado para o shadow DB do `prisma migrate dev`). Depois:
 
+> **Limitação do banco local:** o `prisma dev` aceita **uma conexão por vez** (por isso `DATABASE_POOL_MAX=1`). Não rode scripts que conectam no banco (seed, `pg`, Prisma Studio) com o `npm run dev` ligado: a segunda conexão derruba a primeira e pode travar o servidor. Se travar (erros `ECONNRESET`/`Lock file is already being held`), pare tudo, apague a pasta `server.lock.lock` em `%LOCALAPPDATA%\prisma-dev-nodejs\Data\durable-streams\pdv-wall\` e rode `npm run db:start`. Isso não existe no Supabase.
+
 ```bash
 npm run db:migrate          # cria as tabelas
 npm run db:seed             # perfis, admin, categorias e produtos de exemplo
@@ -91,6 +93,7 @@ Convenções que vamos seguir conforme os módulos forem implementados (ver `doc
 - [x] Módulo 3 (parte 2): recuperar/redefinir senha (link de uso único, 1h, derruba sessões antigas)
 - [x] Módulo 3 (parte 3): gestão de usuários em `/admin/usuarios` (criar, editar, desativar, bloquear, convite por link ou senha temporária), troca de senha obrigatória/voluntária em `/trocar-senha`, menu filtrado por permissão
 - [ ] Permissões finas por tela/ação nos demais módulos (usar `exigirPermissao` à medida que forem criados)
-- [ ] Módulo 4: Configurações
+- [x] Módulo 4 (parte 1): configurações de Empresa, Vendas, Estoque e Financeiro em `/configuracoes` (validação, padrões, permissão por seção, auditoria). Use `getConfig("vendas")` etc. nos outros módulos
+- [ ] Módulo 4 (parte 2): notificações, interface, backups/logs, integrações e upload de logo
 - [ ] Módulo 2.1: CRUD de produtos
 - [ ] Módulos 2.2 a 2.6

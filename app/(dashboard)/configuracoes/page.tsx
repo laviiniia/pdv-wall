@@ -1,5 +1,5 @@
-import { EmConstrucao } from "@/components/layout/EmConstrucao";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return <EmConstrucao href="/configuracoes" />;
+export default function ConfiguracoesPage() {
+  redirect("/configuracoes/empresa");
 }

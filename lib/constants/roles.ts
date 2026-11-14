@@ -32,6 +32,7 @@ export const PERMISSOES_PADRAO: Record<RoleNome, { descricao: string; permissoes
       "financeiro.ver",
       "financeiro.criar_despesa",
       "relatorios.ver",
+      "configuracoes.editar_operacional",
     ],
   },
   operador: {
@@ -54,6 +55,10 @@ export const PERMISSOES_PADRAO: Record<RoleNome, { descricao: string; permissoes
 // Permissões usadas pelas telas de administração (admin tem "*").
 export const PERMISSAO = {
   USUARIOS_GERENCIAR: "usuarios.gerenciar",
+  /** Todas as seções de configurações (admin). */
+  CONFIG_EDITAR: "configuracoes.editar",
+  /** Seções operacionais de configurações, ex.: estoque (gerente). */
+  CONFIG_EDITAR_OPERACIONAL: "configuracoes.editar_operacional",
 } as const;
 
 export function temPermissao(permissoes: string[], requerida: string): boolean {
