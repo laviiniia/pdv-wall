@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PDV Wall
 
-## Getting Started
+Sistema PDV online para empresa alimentícia: vendas no balcão, pedidos por QR Code, estoque, financeiro e relatórios.
 
-First, run the development server:
+**Stack:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 + shadcn/ui · Prisma 7 · PostgreSQL (local via `prisma dev`, produção via Supabase)
+
+A especificação completa está em [`docs/`](docs/README.md).
+
+## Como rodar (primeira vez)
+
+Requisitos: Node.js 20+ (testado com 24) e npm.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install                 # instala dependências e gera o Prisma Client
+cp .env.example .env.local  # depois ajuste os valores
+npm run db:start            # sobe um Postgres local (sem Docker) e imprime a URL
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Se a URL impressa for diferente da que está no `.env.local`, atualize o `DATABASE_URL`. Depois:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run db:migrate          # cria as tabelas
+npm run db:seed             # perfis, admin, categorias e produtos de exemplo
+npm run dev                 # http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Health check: <http://localhost:3000/api/health>
 
-## Learn More
+Login de desenvolvimento (criado pelo seed): `admin@pdv.local` / `admin123`. Pode ser alterado com `SEED_ADMIN_EMAIL` e `SEED_ADMIN_PASSWORD`. O `.env.local` precisa de um `JWT_SECRET` com pelo menos 32 caracteres.
 
-To learn more about Next.js, take a look at the following resources:
+**Recuperação de senha em desenvolvimento:** sem `RESEND_API_KEY` e `EMAIL_FROM`, o e-mail com o link de redefinição não é enviado, só aparece no terminal do `npm run dev`. Em produção esses dois são obrigatórios.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Script | O que faz |
+| --- | --- |
+| `npm run dev` | Servidor de desenvolvimento |
+| `npm run build` / `start` | Build e servidor de produção |
+| `npm run lint` / `type-check` | ESLint / TypeScript |
+| `npm run db:start` / `db:stop` | Liga/desliga o Postgres local (`prisma dev`) |
+| `npm run db:migrate` | Cria/aplica migrations a partir do `prisma/schema.prisma` |
+| `npm run db:seed` | Popula dados de desenvolvimento |
+| `npm run db:studio` | Interface visual do banco |
+| `npm run db:reset` | Apaga o banco, reaplica migrations e roda o seed |
 
-## Deploy on Vercel
+## Estrutura
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+app/
+  (auth)/login/          tela de login (Módulo 3)
+  (dashboard)/           rotas privadas com sidebar
+    dashboard/           visão geral
+    produtos/            Módulo 2.1
+    vendas/              Módulo 2.2
+    pedidos-online/      Módulo 2.3
+    estoque/             Módulo 2.4
+    financeiro/          Módulo 2.5
+    relatorios/          Módulo 2.6
+    configuracoes/       Módulo 4
+  api/                   route handlers (backend)
+components/
+  ui/                    componentes shadcn/ui
+  layout/                Sidebar, PageHeader...
+lib/
+  prisma.ts              cliente Prisma (singleton)
+  constants/             perfis/permissões, navegação
+  utils/                 formatação etc.
+  generated/prisma/      Prisma Client gerado (não versionado)
+prisma/
+  schema.prisma          modelo de dados
+  migrations/            histórico de migrations
+  seed.ts                dados iniciais
+docs/                    especificação funcional e técnica
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Convenções que vamos seguir conforme os módulos forem implementados (ver `docs/ARQUITETURA_FINAL.md`):
+`lib/services/*.service.ts` para regra de negócio, `lib/validations/*.schema.ts` para schemas Zod e `components/<modulo>/` para componentes de cada módulo.
+
+## Usando o Supabase em vez do banco local
+
+1. Crie um projeto em supabase.com.
+2. Em *Project Settings → Database*, copie a connection string (URI) para o `DATABASE_URL` do `.env.local`.
+3. Rode `npm run db:migrate` (ou `npx prisma migrate deploy` em produção) e `npm run db:seed`.
+
+## Status
+
+- [x] Setup base: Next 16, Tailwind 4, shadcn/ui, Prisma 7, banco local
+- [x] Schema inicial: usuários, perfis, auditoria, tokens de reset, categorias, produtos
+- [x] Layout do dashboard + listagem de produtos (somente leitura)
+- [x] Módulo 3 (parte 1): login/logout com JWT em cookie httpOnly, proteção de rotas (`proxy.ts` + `lib/auth/dal.ts`), limite de 5 tentativas/5 min, auditoria
+- [x] Módulo 3 (parte 2): recuperar/redefinir senha (link de uso único, 1h, derruba sessões antigas)
+- [ ] Módulo 3 (parte 3): gestão de usuários, checagem de permissões por tela
+- [ ] Módulo 4: Configurações
+- [ ] Módulo 2.1: CRUD de produtos
+- [ ] Módulos 2.2 a 2.6
