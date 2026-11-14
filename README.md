@@ -16,7 +16,7 @@ cp .env.example .env.local  # depois ajuste os valores
 npm run db:start            # sobe um Postgres local (sem Docker) e imprime a URL
 ```
 
-Se a URL impressa for diferente da que está no `.env.local`, atualize o `DATABASE_URL`. Depois:
+Se as portas impressas forem diferentes das do `.env.local`, atualize o `DATABASE_URL` e o `SHADOW_DATABASE_URL` (o servidor local expõe um banco separado para o shadow DB do `prisma migrate dev`). Depois:
 
 ```bash
 npm run db:migrate          # cria as tabelas
@@ -89,7 +89,8 @@ Convenções que vamos seguir conforme os módulos forem implementados (ver `doc
 - [x] Layout do dashboard + listagem de produtos (somente leitura)
 - [x] Módulo 3 (parte 1): login/logout com JWT em cookie httpOnly, proteção de rotas (`proxy.ts` + `lib/auth/dal.ts`), limite de 5 tentativas/5 min, auditoria
 - [x] Módulo 3 (parte 2): recuperar/redefinir senha (link de uso único, 1h, derruba sessões antigas)
-- [ ] Módulo 3 (parte 3): gestão de usuários, checagem de permissões por tela
+- [x] Módulo 3 (parte 3): gestão de usuários em `/admin/usuarios` (criar, editar, desativar, bloquear, convite por link ou senha temporária), troca de senha obrigatória/voluntária em `/trocar-senha`, menu filtrado por permissão
+- [ ] Permissões finas por tela/ação nos demais módulos (usar `exigirPermissao` à medida que forem criados)
 - [ ] Módulo 4: Configurações
 - [ ] Módulo 2.1: CRUD de produtos
 - [ ] Módulos 2.2 a 2.6

@@ -7,8 +7,10 @@ import {
   QrCode,
   Settings,
   ShoppingCart,
+  Users,
   Wallet,
 } from "lucide-react";
+import { PERMISSAO } from "./roles";
 
 export type ItemNavegacao = {
   href: string;
@@ -16,6 +18,8 @@ export type ItemNavegacao = {
   icone: LucideIcon;
   /** Documento de especificação em docs/modulos */
   doc?: string;
+  /** Se definido, o item só aparece para quem tem a permissão. */
+  permissao?: string;
 };
 
 export const NAVEGACAO: ItemNavegacao[] = [
@@ -27,4 +31,11 @@ export const NAVEGACAO: ItemNavegacao[] = [
   { href: "/financeiro", titulo: "Financeiro", icone: Wallet, doc: "MODULO_2_5_FINANCEIRO.md" },
   { href: "/relatorios", titulo: "Relatórios", icone: BarChart3, doc: "MODULO_2_6_RELATORIOS.md" },
   { href: "/configuracoes", titulo: "Configurações", icone: Settings, doc: "MODULO_4_CONFIGURACOES.md" },
+  {
+    href: "/admin/usuarios",
+    titulo: "Usuários",
+    icone: Users,
+    doc: "MODULO_3_AUTENTICACAO.md",
+    permissao: PERMISSAO.USUARIOS_GERENCIAR,
+  },
 ];

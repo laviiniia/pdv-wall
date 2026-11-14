@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 type UsuarioSidebar = { nome: string; email: string; role: string };
 
-export function Sidebar({ usuario }: { usuario: UsuarioSidebar }) {
+export function Sidebar({ usuario, hrefsPermitidos }: { usuario: UsuarioSidebar; hrefsPermitidos: string[] }) {
   const pathname = usePathname();
 
   return (
@@ -21,7 +21,7 @@ export function Sidebar({ usuario }: { usuario: UsuarioSidebar }) {
         <span className="font-semibold">PDV Wall</span>
       </div>
       <nav className="flex flex-1 flex-col gap-0.5 p-2">
-        {NAVEGACAO.map(({ href, titulo, icone: Icone }) => {
+        {NAVEGACAO.filter((i) => hrefsPermitidos.includes(i.href)).map(({ href, titulo, icone: Icone }) => {
           const ativo = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
@@ -41,10 +41,10 @@ export function Sidebar({ usuario }: { usuario: UsuarioSidebar }) {
         })}
       </nav>
       <div className="flex items-center gap-2 border-t p-3">
-        <div className="min-w-0 flex-1">
+        <Link href="/trocar-senha" title="Alterar minha senha" className="min-w-0 flex-1 rounded-md hover:underline">
           <p className="truncate text-sm font-medium">{usuario.nome}</p>
           <p className="truncate text-xs capitalize text-muted-foreground">{usuario.role}</p>
-        </div>
+        </Link>
         <form action={logout}>
           <button
             type="submit"

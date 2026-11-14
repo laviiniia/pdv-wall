@@ -33,6 +33,7 @@ model Usuario {
   telefone              String?   @db.VarChar(20)
   passwordHash          String    @map("password_hash") @db.VarChar(255)
   passwordAlteradaEm    DateTime? @map("password_changed_at")
+  deveTrocarSenha       Boolean   @default(false) @map("deve_trocar_senha") // senha temporária: força troca no próximo acesso
   roleId                Int       @map("role_id")
   ativo                 Boolean   @default(true)
   bloqueado             Boolean   @default(false)

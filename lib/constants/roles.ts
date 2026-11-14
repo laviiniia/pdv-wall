@@ -51,6 +51,11 @@ export const PERMISSOES_PADRAO: Record<RoleNome, { descricao: string; permissoes
   },
 };
 
+// Permissões usadas pelas telas de administração (admin tem "*").
+export const PERMISSAO = {
+  USUARIOS_GERENCIAR: "usuarios.gerenciar",
+} as const;
+
 export function temPermissao(permissoes: string[], requerida: string): boolean {
   return permissoes.includes("*") || permissoes.includes(requerida);
 }

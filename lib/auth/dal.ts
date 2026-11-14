@@ -21,6 +21,7 @@ export const getUsuarioAtual = cache(async () => {
       bloqueado: true,
       permissoesCustom: true,
       passwordAlteradaEm: true,
+      deveTrocarSenha: true,
       role: { select: { nome: true, permissoes: true } },
     },
   });
@@ -47,6 +48,7 @@ export const getUsuarioAtual = cache(async () => {
     email: usuario.email,
     ativo: usuario.ativo,
     bloqueado: usuario.bloqueado,
+    deveTrocarSenha: usuario.deveTrocarSenha,
     role: usuario.role,
     permissoes,
   };

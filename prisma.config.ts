@@ -15,5 +15,8 @@ export default defineConfig({
   },
   datasource: {
     url: env("DATABASE_URL"),
+    // Com `prisma dev`, o shadow DB precisa ser o servidor separado que ele expõe:
+    // no servidor principal todos os nomes de banco apontam para o mesmo banco.
+    ...(process.env.SHADOW_DATABASE_URL && { shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL }),
   },
 });

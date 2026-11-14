@@ -1,5 +1,5 @@
 import "server-only";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import type { ContextoRequisicao } from "./auth.service";
@@ -35,23 +35,7 @@ export async function solicitarResetSenha(email: string, baseUrl: string, ctx: C
     return;
   }
 
-  const token = randomBytes(32).toString("base64url");
-
-  await prisma.$transaction([
-    // Só o link mais recente vale.
-    prisma.resetPasswordToken.updateMany({
-      where: { usuarioId: usuario.id, usado: false },
-      data: { usado: true, usadoEm: new Date() },
-    }),
-    prisma.resetPasswordToken.create({
-      data: {
-        usuarioId: usuario.id,
-        tokenHash: hashToken(token),
-        expiraEm: new Date(Date.now() + VALIDADE_MS),
-      },
-    }),
-  ]);
-
+  const token = await emitirTokenSenha(usuario.id, VALIDADE_MS);
   const link = `${baseUrl}/redefinir-senha?token=${token}`;
   const nome = usuario.nome.split(" ")[0];
 
@@ -66,6 +50,84 @@ export async function solicitarResetSenha(email: string, baseUrl: string, ctx: C
   });
 
   await auditar("PASSWORD_RESET_REQUESTED", email, usuario.id, ctx, true);
+}
+
+/** Cria um token de definição de senha (invalida os anteriores) e devolve o token puro. */
+export async function emitirTokenSenha(usuarioId: number, validadeMs: number) {
+  const token = randomBytes(32).toString("base64url");
+  await prisma.$transaction([
+    // Só o link mais recente vale.
+    prisma.resetPasswordToken.updateMany({
+      where: { usuarioId, usado: false },
+      data: { usado: true, usadoEm: new Date() },
+    }),
+    prisma.resetPasswordToken.create({
+      data: { usuarioId, tokenHash: hashToken(token), expiraEm: new Date(Date.now() + validadeMs) },
+    }),
+  ]);
+  return token;
+}
+
+const VALIDADE_CONVITE_MS = 72 * 60 * 60 * 1000; // conta nova: 72h para definir a senha
+
+/** E-mail de boas-vindas com link para o novo usuário definir a própria senha. */
+export async function enviarConviteConta(usuario: { id: number; nome: string; email: string }, baseUrl: string) {
+  const token = await emitirTokenSenha(usuario.id, VALIDADE_CONVITE_MS);
+  const link = `${baseUrl}/redefinir-senha?token=${token}`;
+  const nome = usuario.nome.split(" ")[0];
+
+  await enviarEmail({
+    para: usuario.email,
+    assunto: "Sua conta foi criada - PDV Wall",
+    texto: `Olá ${nome},\n\nBem-vindo(a) ao PDV Wall! Seu login é ${usuario.email}.\nDefina sua senha pelo link abaixo (válido por 72 horas):\n\n${link}`,
+    html: `<p>Olá ${escapeHtml(nome)},</p>
+<p>Bem-vindo(a) ao PDV Wall! Seu login é <strong>${escapeHtml(usuario.email)}</strong>.</p>
+<p><a href="${link}">Definir minha senha</a></p>
+<p>O link é válido por 72 horas.</p>`,
+  });
+}
+
+/** Senha temporária de 12 caracteres que já atende à política de senha forte. */
+export function gerarSenhaTemporaria() {
+  const grupos = ["ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnpqrstuvwxyz", "23456789", "@#$%&*!?"];
+  const todos = grupos.join("");
+  const escolher = (s: string) => s[randomInt(s.length)];
+  const chars = [...grupos.map(escolher), ...Array.from({ length: 8 }, () => escolher(todos))];
+  // embaralha (Fisher–Yates)
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join("");
+}
+
+export type ResultadoTroca = { ok: true } | { ok: false; erro: "SENHA_ATUAL_INCORRETA" | "SENHA_IGUAL" };
+
+/** Troca de senha pelo próprio usuário logado. */
+export async function trocarSenha(
+  usuarioId: number,
+  senhaAtual: string,
+  novaSenha: string,
+  ctx: ContextoRequisicao,
+): Promise<ResultadoTroca> {
+  const usuario = await prisma.usuario.findUniqueOrThrow({ where: { id: usuarioId } });
+
+  if (!(await bcrypt.compare(senhaAtual, usuario.passwordHash))) {
+    await auditar("PASSWORD_CHANGE_FAILED", usuario.email, usuario.id, ctx, false, "Senha atual incorreta");
+    return { ok: false, erro: "SENHA_ATUAL_INCORRETA" };
+  }
+  if (senhaAtual === novaSenha) return { ok: false, erro: "SENHA_IGUAL" };
+
+  await prisma.usuario.update({
+    where: { id: usuario.id },
+    data: {
+      passwordHash: await bcrypt.hash(novaSenha, 10),
+      passwordAlteradaEm: new Date(),
+      deveTrocarSenha: false,
+    },
+  });
+  await auditar("PASSWORD_CHANGED", usuario.email, usuario.id, ctx, true);
+  return { ok: true };
 }
 
 /** Retorna o token do banco se ele for válido (existe, não usado, não expirado, usuário ativo). */
@@ -107,6 +169,7 @@ export async function redefinirSenha(
       // Sessões emitidas antes deste instante passam a ser recusadas (ver lib/auth/dal.ts).
       passwordAlteradaEm: agora,
       tentativasLoginFalhas: 0,
+      deveTrocarSenha: false,
     },
   });
 
