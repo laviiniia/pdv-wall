@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Pastas de trabalho (git worktrees) de sessões paralelas do Claude Code:
+    // são cópias do projeto, com builds próprios, e não devem ser analisadas aqui.
+    ".claude/worktrees/**",
+    // Prisma Client gerado
+    "lib/generated/**",
   ]),
 ]);
 
