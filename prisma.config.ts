@@ -1,4 +1,4 @@
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
 
 // O Prisma CLI não carrega .env sozinho: lemos .env.local (padrão do Next.js).
 try {
@@ -14,7 +14,9 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    // `prisma generate` (postinstall na Vercel) não precisa de banco: sem DATABASE_URL, segue vazio.
+    // Comandos que conectam (migrate, db seed) falham com a mensagem do próprio Prisma.
+    url: process.env.DATABASE_URL ?? "",
     // Com `prisma dev`, o shadow DB precisa ser o servidor separado que ele expõe:
     // no servidor principal todos os nomes de banco apontam para o mesmo banco.
     ...(process.env.SHADOW_DATABASE_URL && { shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL }),

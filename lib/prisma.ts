@@ -17,6 +17,18 @@ function createPrismaClient() {
   return new PrismaClient({ adapter: new PrismaPg({ connectionString, max }) });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+function cliente() {
+  return (globalForPrisma.prisma ??= createPrismaClient());
+}
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+/**
+ * Client criado só no primeiro uso. Importar este módulo não exige DATABASE_URL — o build
+ * (`next build` na Vercel) importa as rotas para ler a configuração delas sem acessar o banco.
+ */
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_alvo, prop) {
+    const c = cliente();
+    const valor = Reflect.get(c, prop, c);
+    return typeof valor === "function" ? valor.bind(c) : valor;
+  },
+});
