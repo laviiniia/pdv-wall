@@ -10,7 +10,7 @@ import {
   REGIMES,
   UFS,
 } from "@/lib/validations/configuracoes.schema";
-import { CampoCheckbox, CampoLista, CampoNumero, CampoSelect, CampoTexto, Grupo } from "./campos";
+import { CampoCheckbox, CampoLista, CampoNumero, CampoSelect, CampoTexto, Grupo } from "@/components/form/campos";
 import { CategoriasCustomizadas } from "./CategoriasCustomizadas";
 
 function formatarCnpj(d: string) {

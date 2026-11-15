@@ -95,5 +95,6 @@ Convenções que vamos seguir conforme os módulos forem implementados (ver `doc
 - [ ] Permissões finas por tela/ação nos demais módulos (usar `exigirPermissao` à medida que forem criados)
 - [x] Módulo 4 (parte 1): configurações de Empresa, Vendas, Estoque e Financeiro em `/configuracoes` (validação, padrões, permissão por seção, auditoria). Use `getConfig("vendas")` etc. nos outros módulos
 - [ ] Módulo 4 (parte 2): notificações, interface, backups/logs, integrações e upload de logo
-- [ ] Módulo 2.1: CRUD de produtos
+- [x] Módulo 2.1: produtos e categorias em `/produtos` (cadastro, edição, desativar/reativar, margem ao vivo, busca/filtros/ordenação/paginação, alertas de margem e validade, histórico de alterações)
+- [ ] Módulo 2.1 (pendente): upload de imagem (depende do Supabase Storage), status de estoque (Módulo 2.4) e exclusão definitiva (precisa das vendas do Módulo 2.2)
 - [ ] Módulos 2.2 a 2.6

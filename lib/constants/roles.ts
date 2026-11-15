@@ -18,6 +18,7 @@ export const PERMISSOES_PADRAO: Record<RoleNome, { descricao: string; permissoes
     descricao: "Gerente - Acesso Operacional e Financeiro",
     permissoes: [
       "produtos.ver",
+      "produtos.gerenciar",
       "produtos.editar_preco",
       "vendas.criar",
       "vendas.ver",
@@ -59,6 +60,8 @@ export const PERMISSAO = {
   CONFIG_EDITAR: "configuracoes.editar",
   /** Seções operacionais de configurações, ex.: estoque (gerente). */
   CONFIG_EDITAR_OPERACIONAL: "configuracoes.editar_operacional",
+  /** Criar, editar, desativar e reativar produtos e categorias (MODULO_2_1: admin e gerente). */
+  PRODUTOS_GERENCIAR: "produtos.gerenciar",
 } as const;
 
 export function temPermissao(permissoes: string[], requerida: string): boolean {

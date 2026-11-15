@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | 3 | [Autenticação](modulos/MODULO_3_AUTENTICACAO.md) | `/login`, `/admin/usuarios` | Pronto: login/logout, proteção de rotas, recuperação/troca de senha e gestão de usuários |
 | 4 | [Configurações](modulos/MODULO_4_CONFIGURACOES.md) | `/configuracoes` | Empresa, Vendas, Estoque e Financeiro prontos; falta notificações, interface, backups, integrações |
-| 2.1 | [Gestão de Produtos](modulos/MODULO_2_1_GESTAO_PRODUTOS.md) | `/produtos` | Schema pronto, listagem |
+| 2.1 | [Gestão de Produtos](modulos/MODULO_2_1_GESTAO_PRODUTOS.md) | `/produtos` | Pronto; falta upload de imagem, status de estoque e exclusão definitiva |
 | 2.2 | [Vendas PDV](modulos/MODULO_2_2_VENDAS_PDV.md) | `/vendas` | A fazer |
 | 2.3 | [Pedidos Online / QR Code](modulos/MODULO_2_3_PEDIDOS_ONLINE_QR_CODE.md) | `/pedidos-online` | A fazer |
 | 2.4 | [Controle de Estoque](modulos/MODULO_2_4_CONTROLE_ESTOQUE.md) | `/estoque` | A fazer |
@@ -30,6 +30,14 @@ A documentação foi escrita para Next.js 14 / Prisma 5. O projeto usa versões 
 - **Auth:** a documentação cita tanto Supabase Auth quanto JWT próprio. O Módulo 3 especifica JWT próprio (`jose` + `bcryptjs`), que é o caminho adotado.
 - **Onde fica o token:** a documentação sugere `localStorage` + header `Authorization`. O código guarda o JWT num **cookie httpOnly**, que o JavaScript da página não consegue ler (protege contra roubo por XSS). A sessão dura 8h, ou 7 dias com "manter conectado". Ainda não há refresh token separado: ao expirar, a pessoa faz login de novo.
 - **Recuperar senha:** a resposta é sempre a mesma ("se o e-mail estiver cadastrado...") para não revelar quem tem conta; a documentação previa avisar quando o e-mail não existe. A rota é `/redefinir-senha`, não `/reset-senha`. O token é guardado só como hash SHA-256 (sem a coluna `token_plain`) e sessões antigas são derrubadas comparando o `iat` do JWT com `password_changed_at`.
+- **Produtos (Módulo 2.1):**
+  - **permissões:** a doc do 2.1 diz que o gerente cria, edita e desativa produtos; a matriz do Módulo 3 diz que ele só edita preço. Seguimos o 2.1 (`produtos.gerenciar` para admin e gerente; operador só visualiza). Se a regra certa for a do Módulo 3, basta tirar `produtos.gerenciar` do gerente em `lib/constants/roles.ts` e rodar o seed;
+  - **auditoria:** em vez das tabelas `auditoria_produtos`/`auditoria_categorias`, as alterações vão para a tabela única `auditoria` (módulos `PRODUTOS`/`CATEGORIAS`), com o diff campo a campo; o histórico do produto é lido de lá;
+  - **regras no banco:** `CHECK (preco_custo > 0)`, `CHECK (preco_venda > preco_custo)` e nomes únicos sem diferenciar maiúsculas (índices em `lower(nome)`), criados à mão na migration `*_produtos_regras` (o Prisma não os representa no schema, mas também não os remove);
+  - **"% de lucro"** segue a fórmula da doc: margem ÷ custo × 100 (markup). O alerta de "margem baixa" compara esse número com a margem mínima de Configurações › Financeiro;
+  - **nome:** aceita letras com acento, números, espaços e hífen (a doc proíbe caracteres especiais); **SKU** no formato `TIPO-NÚMERO`, sempre em maiúsculas;
+  - **validade:** precisa ser futura ao cadastrar ou ao alterar a data; um produto já vencido pode ser editado sem mexer nela. O alerta usa os dias de antecedência de Configurações › Estoque;
+  - **ainda fora:** upload de imagem (redimensionar para 400×400 e guardar no Supabase Storage), status de estoque (precisa da quantidade atual, Módulo 2.4) e exclusão definitiva só para quem não tem vendas (Módulo 2.2). A ordenação por margem calcula em memória, o que é suficiente para centenas de produtos.
 - **Configurações (Módulo 4):**
   - uma linha por seção na tabela `configuracoes` (`chave` = `empresa`, `vendas`, `estoque`, `financeiro`), sem a coluna `tipo` (a chave já é a seção); formato e valores padrão definidos em `lib/validations/configuracoes.schema.ts`. Nos outros módulos, leia com `getConfig("vendas")`: sempre vem completo, com os padrões para o que nunca foi salvo;
   - permissão: todos visualizam; admin edita tudo; gerente edita só Estoque (`configuracoes.editar_operacional`). Vendas é só admin porque contém os limites de desconto do próprio gerente;

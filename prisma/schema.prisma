@@ -50,6 +50,7 @@ model Usuario {
   auditorias         Auditoria[]
   resetTokens        ResetPasswordToken[]
   categoriasCriadas  Categoria[]          @relation("CategoriaCriadaPor")
+  categoriasEditadas Categoria[]          @relation("CategoriaEditadaPor")
   produtosCriados    Produto[]            @relation("ProdutoCriadoPor")
   produtosEditados   Produto[]            @relation("ProdutoEditadoPor")
   configuracoes      Configuracao[]
@@ -123,13 +124,15 @@ model Categoria {
   descricao   String?
   corHex      String    @default("#808080") @map("cor_hex") @db.VarChar(7)
   icone       String?   @db.VarChar(100)
-  ativa       Boolean   @default(true)
-  criadoPorId Int       @map("criado_por")
-  criadoEm    DateTime  @default(now()) @map("data_criacao")
-  editadoEm   DateTime  @updatedAt @map("data_edicao")
+  ativa        Boolean   @default(true)
+  criadoPorId  Int       @map("criado_por")
+  editadoPorId Int?      @map("editado_por")
+  criadoEm     DateTime  @default(now()) @map("data_criacao")
+  editadoEm    DateTime  @updatedAt @map("data_edicao")
 
-  criadoPor Usuario   @relation("CategoriaCriadaPor", fields: [criadoPorId], references: [id])
-  produtos  Produto[]
+  criadoPor  Usuario   @relation("CategoriaCriadaPor", fields: [criadoPorId], references: [id])
+  editadoPor Usuario?  @relation("CategoriaEditadaPor", fields: [editadoPorId], references: [id])
+  produtos   Produto[]
 
   @@map("categorias")
 }
@@ -170,6 +173,8 @@ model Produto {
   criadoPor  Usuario   @relation("ProdutoCriadoPor", fields: [criadoPorId], references: [id])
   editadoPor Usuario?  @relation("ProdutoEditadoPor", fields: [editadoPorId], references: [id])
 
+  // Restrições CHECK (preço de custo > 0 e venda > custo) ficam na migration
+  // 20261115*_produtos_regras: o Prisma não as expressa no schema.
   @@index([categoriaId])
   @@index([status])
   @@map("produtos")

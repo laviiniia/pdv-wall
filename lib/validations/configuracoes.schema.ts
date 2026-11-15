@@ -1,19 +1,11 @@
 // Formato e valores padrão de cada seção de configurações (docs/modulos/MODULO_4_CONFIGURACOES.md).
 // Cada seção é guardada como JSON em uma linha da tabela `configuracoes` (chave = nome da seção).
 import { z } from "zod";
+import { lerNumero } from "@/lib/utils/numero";
 
 // ─── Helpers de entrada (os valores chegam de <form> como texto) ─────────────
 
-/**
- * Aceita "2,50", "2.50" e "1.234,56"; vazio → undefined (deixa o .default() agir).
- * O ponto só é tratado como separador de milhar quando também há vírgula.
- */
-export function lerNumero(v: string) {
-  let t = v.trim();
-  if (t === "") return undefined;
-  if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
-  return Number(t);
-}
+/** Número em formato pt-BR; vazio → undefined (deixa o .default() agir). */
 const numero = (s: z.ZodNumber) => z.preprocess((v) => (typeof v === "string" ? lerNumero(v) : v), s);
 
 /** Checkbox: "true"/"on" → true; ausente → false. */

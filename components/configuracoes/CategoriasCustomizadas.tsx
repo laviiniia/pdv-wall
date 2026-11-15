@@ -2,12 +2,12 @@
 
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
-import { useConfigCtx } from "./ConfigForm";
+import { useFormCtx } from "@/components/form/FormCtx";
 
 const MAX = 10;
 
 export function CategoriasCustomizadas({ valores }: { valores: string[] }) {
-  const { erros, somenteLeitura } = useConfigCtx();
+  const { erros, somenteLeitura } = useFormCtx();
   // ids estáveis para o React não trocar o conteúdo dos inputs ao remover
   const [itens, setItens] = useState(() => valores.map((v, i) => ({ id: i, valor: v })));
   const [proximoId, setProximoId] = useState(valores.length);

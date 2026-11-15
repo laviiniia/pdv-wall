@@ -5,10 +5,9 @@ import { contextoRequisicao } from "@/lib/auth/contexto";
 import { getUsuarioAtual } from "@/lib/auth/dal";
 import { podeEditarSecao, salvarConfig } from "@/lib/services/configuracoes.service";
 import { ehSecao } from "@/lib/validations/configuracoes.schema";
+import type { EstadoForm } from "@/components/form/Formulario";
 
-export type ConfigFormState =
-  | { ok?: boolean; mensagem?: string; erro?: string; campos?: Record<string, string[]> }
-  | undefined;
+export type ConfigFormState = EstadoForm;
 
 /** Nome do campo oculto em que cada formulário declara seus campos de lista (checkbox em grupo). */
 const MARCADOR_LISTA = "__lista__";

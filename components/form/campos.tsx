@@ -1,13 +1,13 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useConfigCtx } from "./ConfigForm";
+import { useFormCtx } from "./FormCtx";
 
 const inputBase =
   "h-9 rounded-md border bg-background px-3 text-sm font-normal outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive disabled:bg-muted/50 disabled:text-muted-foreground";
 
 function Erro({ nome }: { nome: string }) {
-  const { erros } = useConfigCtx();
+  const { erros } = useFormCtx();
   const msg = erros[nome]?.[0];
   return msg ? <span className="text-xs font-normal text-destructive">{msg}</span> : null;
 }
@@ -34,13 +34,46 @@ export function CampoTexto({
   largo,
   valor,
   tipo = "text",
+  className,
   ...rest
 }: BaseProps & { valor: string; tipo?: string } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "type">) {
-  const { erros } = useConfigCtx();
+  const { erros } = useFormCtx();
   return (
     <label className={cn("flex flex-col gap-1.5 text-sm font-medium", largo && "sm:col-span-2")}>
       {rotulo}
-      <input name={nome} type={tipo} defaultValue={valor} aria-invalid={!!erros[nome]} className={inputBase} {...rest} />
+      <input
+        name={nome}
+        type={tipo}
+        defaultValue={valor}
+        aria-invalid={!!erros[nome]}
+        className={cn(inputBase, className)}
+        {...rest}
+      />
+      <Ajuda>{ajuda}</Ajuda>
+      <Erro nome={nome} />
+    </label>
+  );
+}
+
+export function CampoTextoLongo({
+  nome,
+  rotulo,
+  ajuda,
+  valor,
+  max,
+}: BaseProps & { valor: string; max?: number }) {
+  const { erros } = useFormCtx();
+  return (
+    <label className="flex flex-col gap-1.5 text-sm font-medium sm:col-span-2">
+      {rotulo}
+      <textarea
+        name={nome}
+        defaultValue={valor}
+        maxLength={max}
+        rows={3}
+        aria-invalid={!!erros[nome]}
+        className={cn(inputBase, "h-auto py-2")}
+      />
       <Ajuda>{ajuda}</Ajuda>
       <Erro nome={nome} />
     </label>
@@ -56,7 +89,7 @@ export function CampoNumero({
   prefixo,
   sufixo,
 }: BaseProps & { valor: number; prefixo?: string; sufixo?: string }) {
-  const { erros } = useConfigCtx();
+  const { erros } = useFormCtx();
   return (
     <label className="flex flex-col gap-1.5 text-sm font-medium">
       {rotulo}
@@ -84,7 +117,7 @@ export function CampoSelect({
   valor,
   opcoes,
 }: BaseProps & { valor: string; opcoes: Record<string, string> | readonly string[] }) {
-  const { erros } = useConfigCtx();
+  const { erros } = useFormCtx();
   const pares = Array.isArray(opcoes) ? opcoes.map((o) => [o, o] as const) : Object.entries(opcoes);
   return (
     <label className="flex flex-col gap-1.5 text-sm font-medium">
