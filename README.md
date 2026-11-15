@@ -96,9 +96,11 @@ Convenções que vamos seguir conforme os módulos forem implementados (ver `doc
 - [x] Módulo 4 (parte 1): configurações de Empresa, Vendas, Estoque e Financeiro em `/configuracoes` (validação, padrões, permissão por seção, auditoria). Use `getConfig("vendas")` etc. nos outros módulos
 - [ ] Módulo 4 (parte 2): notificações, interface, backups/logs, integrações e upload de logo
 - [x] Módulo 2.1: produtos e categorias em `/produtos` (cadastro, edição, desativar/reativar, margem ao vivo, busca/filtros/ordenação/paginação, alertas de margem e validade, histórico de alterações)
-- [ ] Módulo 2.1 (pendente): upload de imagem (depende do Supabase Storage), status de estoque (Módulo 2.4) e exclusão definitiva (precisa das vendas do Módulo 2.2)
+- [ ] Módulo 2.1 (pendente): upload de imagem (depende do Supabase Storage) e exclusão definitiva de produto sem vendas
 - [x] Módulo 2.2: PDV em `/vendas` (busca por nome/SKU/código de barras, carrinho, desconto por perfil e cupons, pagamento em dinheiro/débito/crédito/PIX/combinado, cupom para impressão, vendas do dia, cancelamento) e cupons em `/vendas/cupons`
 - [ ] Módulo 2.2 (pendente): integração com maquininha e PIX dinâmico, rascunhos de venda no banco, aprovação de desconto por gerente na hora, baixa de estoque (2.4) e caixa (2.5)
 - [x] Módulo 2.3: pedidos pelo QR Code da mesa — cardápio público em `/mesa/[token]`, acompanhamento em `/pedido/[token]`, painel da cozinha em `/pedidos-online`, mesas e QR Codes em `/pedidos-online/mesas`
 - [ ] Módulo 2.3 (pendente): Supabase Realtime no lugar da consulta a cada 4–5 s, notificações por SMS/push, "chamar garçom", pagamento pelo celular e fechamento do pedido no PDV
-- [ ] Módulos 2.4 a 2.6
+- [x] Módulo 2.4: estoque em `/estoque` — painel com alertas e valor, entrada por compra (com fornecedor), saída/ajuste manual, histórico com desfazer, inventário por contagem física; baixa automática nas vendas, estorno no cancelamento e bloqueio de produto sem estoque no PDV e no cardápio
+- [ ] Módulo 2.4 (pendente): notificações por e-mail/SMS, lotes com FIFO (hoje o produto guarda só o último lote/validade), relatórios de estoque, pedidos de compra pendentes
+- [ ] Módulos 2.5 e 2.6

@@ -30,6 +30,7 @@ const ROTULOS_CAMPO: Record<string, string> = {
   lote: "Lote",
   exibir_no_cardapio: "No cardápio",
   tempo_preparo_min: "Tempo de preparo",
+  controlar_estoque: "Controla estoque",
 };
 
 const ROTULOS_ACAO: Record<string, string> = {

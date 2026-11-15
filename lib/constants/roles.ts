@@ -32,6 +32,7 @@ export const PERMISSOES_PADRAO: Record<RoleNome, { descricao: string; permissoes
       "mesas.gerenciar",
       "estoque.ver",
       "estoque.criar_entrada",
+      "estoque.ajustar",
       "financeiro.ver",
       "financeiro.criar_despesa",
       "relatorios.ver",
@@ -78,6 +79,13 @@ export const PERMISSAO = {
   PEDIDOS_MUDAR_STATUS: "pedidos.mudar_status",
   PEDIDOS_CANCELAR: "pedidos.cancelar",
   MESAS_GERENCIAR: "mesas.gerenciar",
+  // Estoque (MODULO_2_4)
+  ESTOQUE_VER: "estoque.ver",
+  ESTOQUE_ENTRADA: "estoque.criar_entrada",
+  /** Saída manual, ajuste e inventário (gerente). */
+  ESTOQUE_AJUSTAR: "estoque.ajustar",
+  /** Desfazer movimentos (doc: só admin). */
+  ESTOQUE_DESFAZER: "estoque.desfazer",
 } as const;
 
 export function temPermissao(permissoes: string[], requerida: string): boolean {

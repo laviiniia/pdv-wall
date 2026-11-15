@@ -34,6 +34,7 @@ function lerProduto(fd: FormData) {
     dataValidade: fd.get("dataValidade"),
     lote: fd.get("lote"),
     exibirNoCardapio: fd.get("exibirNoCardapio"),
+    controlarEstoque: fd.get("controlarEstoque"),
     tempoPreparoMin: fd.get("tempoPreparoMin"),
   });
 }

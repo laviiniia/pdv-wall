@@ -61,6 +61,7 @@ export const produtoSchema = z
     dataValidade: dataOpcional,
     lote: z.preprocess(vazioParaUndefined, z.string().trim().max(50, "Máximo 50 caracteres").optional()),
     exibirNoCardapio: z.preprocess((v) => v === "true" || v === "on" || v === true, z.boolean()),
+    controlarEstoque: z.preprocess((v) => v === "true" || v === "on" || v === true, z.boolean()),
     tempoPreparoMin: z.preprocess(
       (v) => (typeof v === "string" ? (v.trim() === "" ? undefined : Number(v)) : v),
       z.number("Informe minutos").int("Use minutos inteiros").min(0, "Não pode ser negativo").max(240, "Máximo 240 min").optional(),

@@ -49,6 +49,7 @@ export function PDV({
   aprovacaoAcimaDe,
   formasAceitas,
   parcelamentoMax,
+  bloquearSemEstoque,
 }: {
   categorias: Categoria[];
   maisVendidos: ProdutoPDVSerializado[];
@@ -58,6 +59,8 @@ export function PDV({
   aprovacaoAcimaDe: number | null;
   formasAceitas: FormaPagamento[];
   parcelamentoMax: number;
+  /** Configurações › Estoque › não permitir estoque negativo. */
+  bloquearSemEstoque: boolean;
 }) {
   // ─── Carrinho (guardado no navegador: sobrevive a recarregar a página) ────
   // Lido na criação do estado; só é exibido depois da hidratação, para o HTML
@@ -124,6 +127,11 @@ export function PDV({
   }, []);
 
   function adicionar(p: ProdutoPDVSerializado) {
+    // Enter e leitor de código de barras também passam por aqui.
+    if (bloquearSemEstoque && p.estoque !== null && p.estoque <= 0) {
+      setAviso(`"${p.nome}" está sem estoque.`);
+      return;
+    }
     const fracionado = p.unidadeMedida !== "un";
     const lida = lerNumero(qtdRapida);
     let qtd = lida !== undefined && Number.isFinite(lida) && lida > 0 ? lida : 1;
@@ -330,13 +338,16 @@ export function PDV({
             <p className="text-sm text-muted-foreground">Busque um produto ou escolha uma categoria.</p>
           )}
           <ul className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-2">
-            {listaProdutos.map((p, i) => (
+            {listaProdutos.map((p, i) => {
+              const semEstoque = p.estoque !== null && p.estoque <= 0;
+              return (
               <li key={p.id}>
                 <button
                   type="button"
                   onClick={() => adicionar(p)}
+                  disabled={semEstoque && bloquearSemEstoque}
                   className={cn(
-                    "flex h-full w-full flex-col gap-1 rounded-lg border p-3 text-left transition-colors hover:border-primary hover:bg-primary/5",
+                    "flex h-full w-full flex-col gap-1 rounded-lg border p-3 text-left transition-colors hover:border-primary hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-transparent",
                     i === 0 && termo.trim().length >= 2 && "border-primary/60",
                   )}
                 >
@@ -349,9 +360,15 @@ export function PDV({
                     {brl(p.precoCentavos)}
                     {p.unidadeMedida !== "un" && <span className="font-normal text-muted-foreground"> /{p.unidadeMedida}</span>}
                   </span>
+                  {p.estoque !== null && (
+                    <span className={cn("text-xs", semEstoque ? "font-medium text-destructive" : "text-muted-foreground")}>
+                      {semEstoque ? "Sem estoque" : `Estoque: ${p.estoque.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}`}
+                    </span>
+                  )}
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
           {aviso && <p className="mt-2 text-sm text-destructive">{aviso}</p>}
         </div>

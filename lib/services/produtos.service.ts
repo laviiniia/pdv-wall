@@ -169,6 +169,7 @@ function dadosProduto(d: ProdutoInput) {
     lote: d.lote ?? null,
     exibirNoCardapio: d.exibirNoCardapio,
     tempoPreparoMin: d.tempoPreparoMin ?? null,
+    controlarEstoque: d.controlarEstoque,
   };
 }
 
@@ -227,6 +228,7 @@ export async function editarProduto(
     lote: p.lote ?? null,
     exibir_no_cardapio: p.exibirNoCardapio,
     tempo_preparo_min: p.tempoPreparoMin ?? null,
+    controlar_estoque: p.controlarEstoque,
   });
   const antes = comparavel(atual);
   const depois = comparavel(novo);

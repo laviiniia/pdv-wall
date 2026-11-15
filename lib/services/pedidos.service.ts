@@ -17,6 +17,7 @@ import { dataNoFuso, intervaloDoDia } from "@/lib/utils/data";
 import type { CriarPedidoInput } from "@/lib/validations/pedido.schema";
 import type { ContextoRequisicao } from "./auth.service";
 import { getConfig } from "./configuracoes.service";
+import { disponibilidade } from "./estoque.service";
 
 const centavos = (v: { toString(): string } | number) => Math.round(Number(v.toString()) * 100);
 const dec = (c: number) => new Prisma.Decimal((c / 100).toFixed(2));
@@ -53,6 +54,7 @@ export function buscarMesaPorToken(token: string) {
 }
 
 export async function carregarCardapio() {
+  const estoque = await getConfig("estoque");
   const produtos = await prisma.produto.findMany({
     where: { status: "ativo", exibirNoCardapio: true, categoria: { ativa: true } },
     select: {
@@ -61,6 +63,8 @@ export async function carregarCardapio() {
       descricao: true,
       precoVenda: true,
       tempoPreparoMin: true,
+      controlarEstoque: true,
+      quantidadeEstoque: true,
       categoria: { select: { id: true, nome: true, icone: true, corHex: true } },
       adicionais: {
         where: { ativo: true },
@@ -76,6 +80,8 @@ export async function carregarCardapio() {
     descricao: p.descricao,
     precoCentavos: centavos(p.precoVenda),
     tempoPreparoMin: p.tempoPreparoMin,
+    // Esgotado: controla estoque, sem saldo e a configuração não permite vender no negativo (MODULO_2_4).
+    esgotado: p.controlarEstoque && !estoque.permitirEstoqueNegativo && Number(p.quantidadeEstoque) <= 0,
     categoria: p.categoria,
     adicionais: p.adicionais.map((a) => ({ id: a.id, tipo: a.tipo, nome: a.nome, valorCentavos: centavos(a.valor) })),
   }));
@@ -153,6 +159,21 @@ export async function criarPedido(tokenMesa: string, entrada: CriarPedidoInput, 
       observacao: i.observacao ?? null,
       tempoPreparoMin: p.tempoPreparoMin ?? situacao.tempoPadraoMin,
     });
+  }
+
+  // Estoque: recusa produto controlado sem saldo suficiente (se a configuração não permitir negativo).
+  // O pedido online não dá baixa — a baixa acontece quando a venda é lançada no PDV.
+  const { permitirNegativo, saldos } = await disponibilidade(ids);
+  if (!permitirNegativo) {
+    const pedido = new Map<number, number>();
+    for (const i of itens) pedido.set(i.produtoId, (pedido.get(i.produtoId) ?? 0) + i.quantidade);
+    for (const [produtoId, qtd] of pedido) {
+      const saldo = saldos.get(produtoId);
+      if (saldo !== undefined && saldo < qtd) {
+        const nome = itens.find((i) => i.produtoId === produtoId)!.nomeProduto;
+        return { ok: false, erro: saldo <= 0 ? `${nome} esgotou. Remova do carrinho.` : `Só temos ${saldo} unidade(s) de ${nome}. Ajuste a quantidade.` };
+      }
+    }
   }
 
   const total = itens.reduce((s, i) => s + i.unitario * i.quantidade, 0);

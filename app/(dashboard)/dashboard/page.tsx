@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { getUsuarioAtual } from "@/lib/auth/dal";
 import { PERMISSAO, temPermissao } from "@/lib/constants/roles";
 import { prisma } from "@/lib/prisma";
+import { resumoAlertas } from "@/lib/services/estoque.service";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -17,13 +18,18 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   const aviso = (["senha", "erro"] as const).map((k) => AVISOS[`${k}:${sp[k]}`]).find(Boolean);
 
   const usuario = await getUsuarioAtual();
-  const [produtos, categorias, usuarios] = await Promise.all([
+  const veEstoque = temPermissao(usuario.permissoes, PERMISSAO.ESTOQUE_VER);
+  const [produtos, categorias, usuarios, alertas] = await Promise.all([
     prisma.produto.count({ where: { status: "ativo" } }),
     prisma.categoria.count({ where: { ativa: true } }),
     prisma.usuario.count({ where: { ativo: true } }),
+    veEstoque ? resumoAlertas() : null,
   ]);
 
-  const cards = [
+  const cards: { titulo: string; valor: number; href?: string }[] = [
+    ...(alertas && alertas.alertasAtivos && alertas.produtos > 0
+      ? [{ titulo: "Alertas de estoque", valor: alertas.semEstoque + alertas.criticos + alertas.baixos, href: "/estoque?situacao=alertas" }]
+      : []),
     { titulo: "Produtos ativos", valor: produtos, href: "/produtos" },
     { titulo: "Categorias", valor: categorias, href: "/produtos" },
     {
@@ -44,7 +50,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           {aviso.texto}
         </p>
       )}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => {
           const conteudo = (
             <>

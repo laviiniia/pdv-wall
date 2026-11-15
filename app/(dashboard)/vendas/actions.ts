@@ -13,17 +13,14 @@ import {
   cancelarVenda,
   criarCupom,
   finalizarVenda,
-  type ProdutoPDV,
+  paraPDV,
+  type ProdutoPDVSerializado,
   validarCupom,
 } from "@/lib/services/vendas.service";
 import { cancelarVendaSchema, cupomSchema, finalizarVendaSchema } from "@/lib/validations/venda.schema";
 
-export type ProdutoPDVSerializado = Omit<ProdutoPDV, "precoVenda"> & { precoCentavos: number };
-
-const serializar = (p: ProdutoPDV): ProdutoPDVSerializado => {
-  const { precoVenda, ...resto } = p;
-  return { ...resto, precoCentavos: Math.round(Number(precoVenda) * 100) };
-};
+export type { ProdutoPDVSerializado };
+const serializar = paraPDV;
 
 export async function buscarProdutos(termo: string, categoriaId?: number): Promise<ProdutoPDVSerializado[]> {
   await exigirPermissao(PERMISSAO.VENDAS_CRIAR);

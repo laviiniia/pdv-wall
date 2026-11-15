@@ -191,7 +191,7 @@ export function Cardapio({
                   <button
                     type="button"
                     onClick={() => abrirProduto(p)}
-                    disabled={!aberto}
+                    disabled={!aberto || p.esgotado}
                     className="flex w-full items-start justify-between gap-3 p-3 text-left hover:bg-muted/50 disabled:opacity-60"
                   >
                     <span className="flex flex-col gap-0.5">
@@ -201,7 +201,11 @@ export function Cardapio({
                         <Clock className="size-3" /> ~{p.tempoPreparoMin ?? tempoPadraoMin} min
                       </span>
                     </span>
-                    <span className="whitespace-nowrap font-semibold tabular-nums">{brl(p.precoCentavos)}</span>
+                    {p.esgotado ? (
+                      <span className="whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Esgotado</span>
+                    ) : (
+                      <span className="whitespace-nowrap font-semibold tabular-nums">{brl(p.precoCentavos)}</span>
+                    )}
                   </button>
                 </li>
               ))}

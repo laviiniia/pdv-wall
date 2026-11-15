@@ -7,6 +7,8 @@ import { calcularTotais, centavos, type Desconto, reais, validarPagamentos } fro
 import type { CupomInput, FinalizarVendaInput } from "@/lib/validations/venda.schema";
 import type { ContextoRequisicao } from "./auth.service";
 import { getConfig } from "./configuracoes.service";
+import { baixarEstoqueVenda, estornarEstoqueVenda } from "./estoque.service";
+import { EstoqueInsuficiente } from "@/lib/estoque/movimentar";
 
 type Usuario = { id: number; email: string; nome: string; role: { nome: string }; permissoes: string[] };
 
@@ -22,6 +24,8 @@ const selectProdutoPDV = {
   codigoBarras: true,
   precoVenda: true,
   unidadeMedida: true,
+  controlarEstoque: true,
+  quantidadeEstoque: true,
   categoria: { select: { id: true, nome: true, icone: true, corHex: true } },
 } satisfies Prisma.ProdutoSelect;
 
@@ -54,6 +58,21 @@ export async function buscarProdutosPDV(termo: string, categoriaId?: number) {
 }
 
 export type ProdutoPDV = Awaited<ReturnType<typeof buscarProdutosPDV>>[number];
+
+/** Forma enviada ao navegador: sem Decimal; estoque = null quando o produto não controla estoque. */
+export type ProdutoPDVSerializado = Omit<ProdutoPDV, "precoVenda" | "quantidadeEstoque" | "controlarEstoque"> & {
+  precoCentavos: number;
+  estoque: number | null;
+};
+
+export function paraPDV(p: ProdutoPDV): ProdutoPDVSerializado {
+  const { precoVenda, quantidadeEstoque, controlarEstoque, ...resto } = p;
+  return {
+    ...resto,
+    precoCentavos: Math.round(Number(precoVenda) * 100),
+    estoque: controlarEstoque ? Number(quantidadeEstoque) : null,
+  };
+}
 
 /** "Últimos vendidos": os mais vendidos nos últimos 30 dias, para adicionar com um clique. */
 export async function maisVendidos(limite = 8) {
@@ -182,7 +201,7 @@ export async function finalizarVenda(entrada: FinalizarVendaInput, usuario: Usua
   if (!pg.ok) return pg;
 
   // 4. Grava tudo numa transação.
-  const empresa = await getConfig("empresa");
+  const [empresa, estoqueCfg] = await Promise.all([getConfig("empresa"), getConfig("estoque")]);
   const dia = dataNoFuso(new Date(), empresa.funcionamento.timezone).replace(/-/g, "");
   try {
     const venda = await prisma.$transaction(async (tx) => {
@@ -231,11 +250,20 @@ export async function finalizarVenda(entrada: FinalizarVendaInput, usuario: Usua
         },
       });
       // Número legível: VEND-AAAAMMDD-000123 (o id garante unicidade).
-      return tx.venda.update({
+      const final = await tx.venda.update({
         where: { id: criada.id },
         data: { numero: `VEND-${dia}-${String(criada.id).padStart(6, "0")}` },
         select: { id: true, numero: true },
       });
+      // Baixa de estoque na mesma transação: se faltar saldo, a venda inteira é desfeita.
+      await baixarEstoqueVenda(
+        tx,
+        final,
+        itens.map((i) => ({ produtoId: i.produto.id, quantidade: i.quantidade })),
+        usuario.id,
+        estoqueCfg,
+      );
+      return final;
     });
 
     await prisma.auditoria.create({
@@ -259,6 +287,7 @@ export async function finalizarVenda(entrada: FinalizarVendaInput, usuario: Usua
     return { ok: true, id: venda.id, numero: venda.numero, troco: pg.troco };
   } catch (e) {
     if (e instanceof ErroVenda) return { ok: false, erro: e.message };
+    if (e instanceof EstoqueInsuficiente) return { ok: false, erro: `${e.message} Ajuste a quantidade ou remova o item.` };
     throw e;
   }
 }
@@ -354,6 +383,8 @@ export async function cancelarVenda(id: number, motivo: string, usuario: Usuario
     if (venda.cupomId) {
       await tx.cupomPromocional.updateMany({ where: { id: venda.cupomId, usosAtuais: { gt: 0 } }, data: { usosAtuais: { decrement: 1 } } });
     }
+    // Devolve ao estoque o que a venda baixou.
+    await estornarEstoqueVenda(tx, { id: venda.id, numero: venda.numero }, usuario.id);
     return true;
   });
   if (!cancelou) return { ok: false as const, erro: "Esta venda já está cancelada." };

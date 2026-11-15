@@ -22,6 +22,8 @@ export type ProdutoEditavel = {
   lote: string | null;
   exibirNoCardapio: boolean;
   tempoPreparoMin: number | null;
+  controlarEstoque: boolean;
+  quantidadeEstoque: { toString(): string };
 };
 
 export function ProdutoForm({
@@ -97,6 +99,24 @@ export function ProdutoForm({
       </Grupo>
 
       <Grupo titulo="Estoque e medidas">
+        <CampoCheckbox
+          nome="controlarEstoque"
+          rotulo="Controlar estoque deste produto"
+          ajuda={
+            produto?.controlarEstoque
+              ? `Saldo atual: ${Number(produto.quantidadeEstoque.toString()).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${produto.unidadeMedida}. Vendas dão baixa automaticamente.`
+              : "Liga baixa automática nas vendas, alertas e bloqueio sem estoque. Comece por uma entrada de mercadoria."
+          }
+          valor={produto?.controlarEstoque ?? false}
+          largo
+        />
+        {produto?.controlarEstoque && (
+          <p className="text-sm sm:col-span-2">
+            <Link href={`/estoque/movimentos?produto=${produto.id}`} className="text-primary hover:underline">Ver movimentações</Link>
+            {" · "}
+            <Link href={`/estoque/entrada?produto=${produto.id}`} className="text-primary hover:underline">Dar entrada</Link>
+          </p>
+        )}
         <CampoSelect nome="unidadeMedida" rotulo="Unidade de medida" valor={produto?.unidadeMedida ?? "un"} opcoes={UNIDADES_MEDIDA} />
         <CampoNumero
           nome="quantidadeMinima"

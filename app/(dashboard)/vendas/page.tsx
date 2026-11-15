@@ -5,17 +5,18 @@ import { PDV } from "@/components/pdv/PDV";
 import { exigirPermissao } from "@/lib/auth/dal";
 import { PERMISSAO, temPermissao } from "@/lib/constants/roles";
 import { getConfig } from "@/lib/services/configuracoes.service";
-import { categoriasPDV, maisVendidos, podeVerVendas, regrasDesconto } from "@/lib/services/vendas.service";
+import { categoriasPDV, maisVendidos, paraPDV, podeVerVendas, regrasDesconto } from "@/lib/services/vendas.service";
 
 export const metadata: Metadata = { title: "PDV" };
 
 export default async function VendasPage() {
   const usuario = await exigirPermissao(PERMISSAO.VENDAS_CRIAR);
-  const [categorias, populares, regras, vendas] = await Promise.all([
+  const [categorias, populares, regras, vendas, estoque] = await Promise.all([
     categoriasPDV(),
     maisVendidos(),
     regrasDesconto(usuario),
     getConfig("vendas"),
+    getConfig("estoque"),
   ]);
 
   return (
@@ -37,7 +38,8 @@ export default async function VendasPage() {
       </div>
       <PDV
         categorias={categorias}
-        maisVendidos={populares.map(({ precoVenda, ...p }) => ({ ...p, precoCentavos: Math.round(Number(precoVenda) * 100) }))}
+        maisVendidos={populares.map(paraPDV)}
+        bloquearSemEstoque={!estoque.permitirEstoqueNegativo}
         limiteDescontoPct={regras.limitePct}
         aprovacaoAcimaDe={regras.exigeAprovacaoAcimaDe}
         formasAceitas={vendas.formasPagamento}
