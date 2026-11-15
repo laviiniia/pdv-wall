@@ -48,3 +48,9 @@ next-env.d.ts
 .devin/skills/prisma-composer-core-concepts/SKILL.md
 .devin/skills/prisma-platform-core-concepts/SKILL.md
 *.local
+
+# exceção: template de variáveis é versionado
+!.env.example
+
+# prisma client gerado
+/lib/generated/

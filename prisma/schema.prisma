@@ -1,0 +1,729 @@
+// Schema do PDV Wall.
+// Base: Módulo 3 (Autenticação) + Módulo 2.1 (Gestão de Produtos).
+// Os demais módulos (vendas, estoque, financeiro...) entram em migrations futuras.
+// A URL do banco fica em prisma.config.ts (DATABASE_URL).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Módulo 3: Autenticação ─────────────────────────────────────────────────
+
+model Role {
+  id         Int       @id @default(autoincrement())
+  nome       String    @unique @db.VarChar(50) // admin, gerente, operador
+  descricao  String?
+  permissoes Json // ex.: ["*"] ou ["vendas.criar", "produtos.ler"]
+  ativo      Boolean   @default(true)
+  criadoEm   DateTime  @default(now()) @map("data_criacao")
+  usuarios   Usuario[]
+
+  @@map("roles")
+}
+
+model Usuario {
+  id                    Int       @id @default(autoincrement())
+  nome                  String    @db.VarChar(150)
+  email                 String    @unique @db.VarChar(255)
+  telefone              String?   @db.VarChar(20)
+  passwordHash          String    @map("password_hash") @db.VarChar(255)
+  passwordAlteradaEm    DateTime? @map("password_changed_at")
+  deveTrocarSenha       Boolean   @default(false) @map("deve_trocar_senha") // senha temporária: força troca no próximo acesso
+  roleId                Int       @map("role_id")
+  ativo                 Boolean   @default(true)
+  bloqueado             Boolean   @default(false)
+  tentativasLoginFalhas Int       @default(0) @map("tentativas_login_falhas")
+  permissoesCustom      Json?     @map("permissoes_custom")
+  ultimoLogin           DateTime? @map("ultimo_login")
+  criadoPorId           Int?      @map("criado_por")
+  criadoEm              DateTime  @default(now()) @map("data_criacao")
+  atualizadoEm          DateTime  @updatedAt @map("data_atualizacao")
+
+  role               Role                    @relation(fields: [roleId], references: [id])
+  criadoPor          Usuario?                @relation("UsuarioCriadoPor", fields: [criadoPorId], references: [id])
+  usuariosCriados    Usuario[]               @relation("UsuarioCriadoPor")
+  auditorias         Auditoria[]
+  resetTokens        ResetPasswordToken[]
+  categoriasCriadas  Categoria[]             @relation("CategoriaCriadaPor")
+  categoriasEditadas Categoria[]             @relation("CategoriaEditadaPor")
+  produtosCriados    Produto[]               @relation("ProdutoCriadoPor")
+  produtosEditados   Produto[]               @relation("ProdutoEditadoPor")
+  configuracoes      Configuracao[]
+  vendas             Venda[]                 @relation("VendaOperador")
+  vendasCanceladas   Venda[]                 @relation("VendaCanceladaPor")
+  cuponsCriados      CupomPromocional[]
+  historicoPedidos   HistoricoStatusPedido[]
+  movimentosEstoque  MovimentoEstoque[]
+  entradasEstoque    EntradaEstoque[]
+  inventarios        Inventario[]
+  sessoesCaixa       SessaoCaixa[]           @relation("SessaoOperador")
+  sessoesFechadas    SessaoCaixa[]           @relation("SessaoFechadaPor")
+  movimentosCaixa    MovimentoCaixa[]
+  despesas           Despesa[]
+  contasCriadas      ContaPagar[]
+  pagamentosConta    PagamentoConta[]
+
+  @@index([roleId])
+  @@index([ativo])
+  @@map("usuarios")
+}
+
+model Auditoria {
+  id               Int      @id @default(autoincrement())
+  usuarioId        Int?     @map("usuario_id")
+  emailUsuario     String?  @map("email_usuario") @db.VarChar(255)
+  acao             String   @db.VarChar(50) // LOGIN_SUCESSO, VENDA_CRIADA...
+  modulo           String?  @db.VarChar(50) // VENDAS_PDV, ESTOQUE...
+  nivel            String   @default("INFO") @db.VarChar(20) // INFO, WARN, ERROR, CRITICAL
+  descricao        String?
+  dadosModificados Json?    @map("dados_modificados")
+  ipAddress        String?  @map("ip_address") @db.VarChar(45)
+  userAgent        String?  @map("user_agent")
+  sucesso          Boolean  @default(true)
+  mensagemErro     String?  @map("mensagem_erro")
+  dataHora         DateTime @default(now()) @map("data_hora")
+
+  usuario Usuario? @relation(fields: [usuarioId], references: [id])
+
+  @@index([usuarioId])
+  @@index([acao])
+  @@index([modulo])
+  @@index([dataHora])
+  @@map("auditoria")
+}
+
+model ResetPasswordToken {
+  id        Int       @id @default(autoincrement())
+  usuarioId Int       @map("usuario_id")
+  tokenHash String    @map("token_hash") @db.VarChar(255) // nunca guardar o token puro
+  usado     Boolean   @default(false)
+  criadoEm  DateTime  @default(now()) @map("data_criacao")
+  expiraEm  DateTime  @map("data_expiracao")
+  usadoEm   DateTime? @map("data_uso")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([expiraEm])
+  @@map("reset_password_tokens")
+}
+
+// ─── Módulo 4: Configurações ────────────────────────────────────────────────
+
+// Uma linha por seção (empresa, vendas, estoque, financeiro). O formato de cada
+// `valor` é definido e validado em lib/validations/configuracoes.schema.ts.
+model Configuracao {
+  id            Int      @id @default(autoincrement())
+  chave         String   @unique @db.VarChar(100)
+  valor         Json
+  alteradoPorId Int?     @map("alterado_por")
+  atualizadoEm  DateTime @updatedAt @map("data_atualizacao")
+
+  alteradoPor Usuario? @relation(fields: [alteradoPorId], references: [id])
+
+  @@map("configuracoes")
+}
+
+// ─── Módulo 2.1: Gestão de Produtos ─────────────────────────────────────────
+
+model Categoria {
+  id           Int      @id @default(autoincrement())
+  nome         String   @unique @db.VarChar(50)
+  descricao    String?
+  corHex       String   @default("#808080") @map("cor_hex") @db.VarChar(7)
+  icone        String?  @db.VarChar(100)
+  ativa        Boolean  @default(true)
+  criadoPorId  Int      @map("criado_por")
+  editadoPorId Int?     @map("editado_por")
+  criadoEm     DateTime @default(now()) @map("data_criacao")
+  editadoEm    DateTime @updatedAt @map("data_edicao")
+
+  criadoPor  Usuario   @relation("CategoriaCriadaPor", fields: [criadoPorId], references: [id])
+  editadoPor Usuario?  @relation("CategoriaEditadaPor", fields: [editadoPorId], references: [id])
+  produtos   Produto[]
+
+  @@map("categorias")
+}
+
+enum StatusProduto {
+  ativo
+  inativo
+}
+
+enum UnidadeMedida {
+  un
+  kg
+  g
+  L
+  ml
+}
+
+model Produto {
+  id                Int           @id @default(autoincrement())
+  nome              String        @db.VarChar(100)
+  descricao         String?
+  sku               String        @unique @db.VarChar(20)
+  codigoBarras      String?       @unique @map("codigo_barras") @db.VarChar(14) // EAN-8/13, GTIN-14
+  categoriaId       Int           @map("categoria_id")
+  imagemPath        String?       @map("imagem_path") @db.VarChar(255)
+  status            StatusProduto @default(ativo)
+  precoCusto        Decimal       @map("preco_custo") @db.Decimal(10, 2)
+  precoVenda        Decimal       @map("preco_venda") @db.Decimal(10, 2)
+  unidadeMedida     UnidadeMedida @map("unidade_medida")
+  quantidadeMinima  Int           @default(0) @map("quantidade_minima")
+  dataValidade      DateTime?     @map("data_validade") @db.Date
+  lote              String?       @db.VarChar(50)
+  // Cardápio digital (MODULO_2_3)
+  exibirNoCardapio  Boolean       @default(true) @map("exibir_no_cardapio")
+  tempoPreparoMin   Int?          @map("tempo_preparo_min") // null = padrão de Configurações › Vendas
+  // Estoque (MODULO_2_4). Só produtos com controle ligado têm baixa, alertas e bloqueio.
+  controlarEstoque  Boolean       @default(false) @map("controlar_estoque")
+  quantidadeEstoque Decimal       @default(0) @map("quantidade_estoque") @db.Decimal(12, 3)
+  ultimoMovimentoEm DateTime?     @map("ultimo_movimento_em")
+  criadoPorId       Int           @map("criado_por")
+  editadoPorId      Int?          @map("editado_por")
+  criadoEm          DateTime      @default(now()) @map("data_cadastro")
+  editadoEm         DateTime      @updatedAt @map("data_edicao")
+
+  categoria         Categoria            @relation(fields: [categoriaId], references: [id])
+  criadoPor         Usuario              @relation("ProdutoCriadoPor", fields: [criadoPorId], references: [id])
+  editadoPor        Usuario?             @relation("ProdutoEditadoPor", fields: [editadoPorId], references: [id])
+  itensVenda        ItemVenda[]
+  adicionais        AdicionalProduto[]
+  itensPedidoOnline ItemPedidoOnline[]
+  movimentosEstoque MovimentoEstoque[]
+  itensEntrada      ItemEntradaEstoque[]
+  itensInventario   ItemInventario[]
+
+  // Restrições CHECK (preço de custo > 0 e venda > custo) ficam na migration
+  // 20261115*_produtos_regras: o Prisma não as expressa no schema.
+  @@index([categoriaId])
+  @@index([status])
+  @@map("produtos")
+}
+
+// ─── Módulo 2.2: Vendas (PDV) ───────────────────────────────────────────────
+
+enum StatusVenda {
+  finalizada
+  cancelada
+}
+
+enum TipoDesconto {
+  percentual
+  valor
+  cupom
+}
+
+enum FormaPagamento {
+  dinheiro
+  debito
+  credito
+  pix
+  voucher
+}
+
+model Venda {
+  id                 Int           @id @default(autoincrement())
+  numero             String        @unique @db.VarChar(30) // VEND-20261115-000123
+  operadorId         Int           @map("operador_id")
+  caixa              String?       @db.VarChar(10) // número do caixa físico (Módulo 2.5)
+  sessaoCaixaId      Int?          @map("sessao_caixa_id")
+  subtotal           Decimal       @db.Decimal(10, 2) // soma dos itens, sem desconto
+  descontoTipo       TipoDesconto? @map("desconto_tipo")
+  descontoPercentual Decimal?      @map("desconto_percentual") @db.Decimal(5, 2)
+  descontoValor      Decimal       @default(0) @map("desconto_valor") @db.Decimal(10, 2)
+  cupomId            Int?          @map("cupom_id")
+  total              Decimal       @db.Decimal(10, 2) // subtotal − desconto
+  troco              Decimal       @default(0) @db.Decimal(10, 2)
+  status             StatusVenda   @default(finalizada)
+  canceladoEm        DateTime?     @map("cancelado_em")
+  canceladoPorId     Int?          @map("cancelado_por")
+  motivoCancelamento String?       @map("motivo_cancelamento")
+  criadoEm           DateTime      @default(now()) @map("data_hora")
+
+  operador     Usuario           @relation("VendaOperador", fields: [operadorId], references: [id])
+  canceladoPor Usuario?          @relation("VendaCanceladaPor", fields: [canceladoPorId], references: [id])
+  cupom        CupomPromocional? @relation(fields: [cupomId], references: [id])
+  sessaoCaixa  SessaoCaixa?      @relation(fields: [sessaoCaixaId], references: [id])
+  itens        ItemVenda[]
+  pagamentos   Pagamento[]
+
+  // CHECKs (total ≥ 0, desconto ≤ subtotal) na migration *_vendas.
+  @@index([criadoEm])
+  @@index([operadorId])
+  @@index([status])
+  @@map("vendas")
+}
+
+model ItemVenda {
+  id                 Int           @id @default(autoincrement())
+  vendaId            Int           @map("venda_id")
+  produtoId          Int           @map("produto_id")
+  // Fotografia do produto no momento da venda (preço e nome podem mudar depois).
+  nomeProduto        String        @map("nome_produto") @db.VarChar(100)
+  sku                String        @db.VarChar(20)
+  unidadeMedida      UnidadeMedida @map("unidade_medida")
+  quantidade         Decimal       @db.Decimal(10, 3) // fracionada para kg/L
+  precoUnitario      Decimal       @map("preco_unitario") @db.Decimal(10, 2)
+  precoCustoUnitario Decimal       @map("preco_custo_unitario") @db.Decimal(10, 2)
+  subtotal           Decimal       @db.Decimal(10, 2)
+
+  venda   Venda   @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  produto Produto @relation(fields: [produtoId], references: [id])
+
+  @@index([vendaId])
+  @@index([produtoId])
+  @@map("itens_venda")
+}
+
+model Pagamento {
+  id              Int            @id @default(autoincrement())
+  vendaId         Int            @map("venda_id")
+  forma           FormaPagamento @map("forma_pagamento")
+  valor           Decimal        @db.Decimal(10, 2) // parte do total paga nesta forma
+  parcelas        Int            @default(1) // crédito
+  valorRecebido   Decimal?       @map("valor_recebido") @db.Decimal(10, 2) // dinheiro
+  troco           Decimal?       @db.Decimal(10, 2) // dinheiro
+  numeroTransacao String?        @map("numero_transacao") @db.VarChar(100) // NSU/autorização da maquininha ou id do PIX
+  criadoEm        DateTime       @default(now()) @map("data_processamento")
+
+  venda Venda @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+
+  @@index([vendaId])
+  @@map("pagamentos")
+}
+
+model CupomPromocional {
+  id          Int          @id @default(autoincrement())
+  codigo      String       @unique @db.VarChar(50) // sempre em maiúsculas
+  descricao   String?
+  tipo        TipoDesconto // percentual ou valor
+  valor       Decimal      @db.Decimal(10, 2)
+  valorMinimo Decimal      @default(0) @map("valor_minimo") @db.Decimal(10, 2)
+  usosMaximos Int?         @map("usos_maximos") // null = ilimitado
+  usosAtuais  Int          @default(0) @map("usos_atuais")
+  inicio      DateTime     @map("data_inicio")
+  expiracao   DateTime     @map("data_expiracao")
+  ativo       Boolean      @default(true)
+  criadoPorId Int?         @map("criado_por")
+  criadoEm    DateTime     @default(now()) @map("data_criacao")
+
+  criadoPor Usuario? @relation(fields: [criadoPorId], references: [id])
+  vendas    Venda[]
+
+  @@index([expiracao])
+  @@map("cupons_promocionais")
+}
+
+// ─── Módulo 2.3: Pedidos online via QR Code ─────────────────────────────────
+
+model Mesa {
+  id           Int      @id @default(autoincrement())
+  numero       Int      @unique
+  // Token aleatório que vai no QR Code (/mesa/{token}); trocá-lo invalida QR Codes impressos.
+  token        String   @unique @db.VarChar(40)
+  capacidade   Int      @default(4)
+  ativa        Boolean  @default(true)
+  criadoEm     DateTime @default(now()) @map("data_criacao")
+  atualizadoEm DateTime @updatedAt @map("data_atualizacao")
+
+  pedidos PedidoOnline[]
+
+  @@map("mesas")
+}
+
+enum TipoAdicional {
+  adicao
+  remocao
+}
+
+/// Personalizações do produto no cardápio (MODULO_2_3, seção 3: adições com preço e remoções).
+model AdicionalProduto {
+  id        Int           @id @default(autoincrement())
+  produtoId Int           @map("produto_id")
+  tipo      TipoAdicional
+  nome      String        @db.VarChar(60)
+  valor     Decimal       @default(0) @db.Decimal(10, 2) // acréscimo (só para adições)
+  ativo     Boolean       @default(true)
+  ordem     Int           @default(0)
+
+  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@index([produtoId])
+  @@map("adicionais_produto")
+}
+
+enum StatusPedido {
+  confirmado
+  preparando
+  pausado
+  pronto
+  entregue
+  cancelado
+}
+
+model PedidoOnline {
+  id                 Int          @id @default(autoincrement())
+  numero             String       @unique @db.VarChar(30) // PED-20261115-000012
+  // Token secreto do link de acompanhamento (/pedido/{token}); o cliente não faz login.
+  token              String       @unique @db.VarChar(40)
+  mesaId             Int          @map("mesa_id")
+  clienteNome        String?      @map("cliente_nome") @db.VarChar(100)
+  clienteTelefone    String?      @map("cliente_telefone") @db.VarChar(20)
+  alergias           String?      @db.VarChar(200)
+  observacoes        String?      @db.VarChar(300)
+  status             StatusPedido @default(confirmado)
+  total              Decimal      @db.Decimal(10, 2)
+  tempoPreparoMin    Int          @map("tempo_preparo_min") // maior tempo entre os itens
+  tempoEstimadoMin   Int          @map("tempo_estimado_min") // preparo + espera na fila, no momento do pedido
+  motivoCancelamento String?      @map("motivo_cancelamento")
+  avaliacaoNota      Int?         @map("avaliacao_nota") // 1 a 5
+  avaliacaoTexto     String?      @map("avaliacao_texto") @db.VarChar(500)
+  ipOrigem           String?      @map("ip_origem") @db.VarChar(45)
+  criadoEm           DateTime     @default(now()) @map("data_criacao")
+  iniciadoEm         DateTime?    @map("data_inicio_preparo")
+  prontoEm           DateTime?    @map("data_pronto")
+  entregueEm         DateTime?    @map("data_entrega")
+  atualizadoEm       DateTime     @updatedAt @map("data_atualizacao")
+
+  mesa      Mesa                    @relation(fields: [mesaId], references: [id])
+  itens     ItemPedidoOnline[]
+  historico HistoricoStatusPedido[]
+
+  @@index([status])
+  @@index([mesaId, criadoEm])
+  @@index([criadoEm])
+  @@map("pedidos_online")
+}
+
+model ItemPedidoOnline {
+  id              Int     @id @default(autoincrement())
+  pedidoId        Int     @map("pedido_id")
+  produtoId       Int     @map("produto_id")
+  nomeProduto     String  @map("nome_produto") @db.VarChar(100)
+  quantidade      Int
+  precoUnitario   Decimal @map("preco_unitario") @db.Decimal(10, 2) // preço base + adições
+  // Fotografia das personalizações escolhidas: [{ tipo, nome, valor }]
+  personalizacoes Json    @default("[]")
+  observacao      String? @db.VarChar(100)
+  tempoPreparoMin Int     @map("tempo_preparo_min")
+
+  pedido  PedidoOnline @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produto Produto      @relation(fields: [produtoId], references: [id])
+
+  @@index([pedidoId])
+  @@map("itens_pedido_online")
+}
+
+model HistoricoStatusPedido {
+  id        Int          @id @default(autoincrement())
+  pedidoId  Int          @map("pedido_id")
+  status    StatusPedido
+  usuarioId Int?         @map("usuario_id") // null = o próprio cliente
+  detalhe   String?      @db.VarChar(300)
+  criadoEm  DateTime     @default(now()) @map("data_hora")
+
+  pedido  PedidoOnline @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  usuario Usuario?     @relation(fields: [usuarioId], references: [id])
+
+  @@index([pedidoId])
+  @@map("historico_status_pedido")
+}
+
+// ─── Módulo 2.4: Controle de estoque ────────────────────────────────────────
+
+enum TipoMovimentoEstoque {
+  entrada // compra / entrada de mercadoria
+  venda // baixa automática do PDV
+  estorno_venda // venda cancelada devolve ao estoque
+  devolucao
+  dano
+  perda
+  ajuste
+  inventario // diferença apurada na contagem física
+  desfazimento // reverte um movimento manual
+}
+
+/// Livro-razão do estoque: toda mudança de saldo gera uma linha (MODULO_2_4, seção 5).
+model MovimentoEstoque {
+  id             Int                  @id @default(autoincrement())
+  produtoId      Int                  @map("produto_id")
+  tipo           TipoMovimentoEstoque
+  quantidade     Decimal              @db.Decimal(12, 3) // positiva entra, negativa sai
+  saldoAnterior  Decimal              @map("saldo_anterior") @db.Decimal(12, 3)
+  saldoNovo      Decimal              @map("saldo_novo") @db.Decimal(12, 3)
+  referenciaTipo String?              @map("referencia_tipo") @db.VarChar(20) // VENDA, ENTRADA, INVENTARIO, MOVIMENTO
+  referenciaId   Int?                 @map("referencia_id")
+  referencia     String?              @db.VarChar(40) // número legível (VEND-..., EST-...)
+  lote           String?              @db.VarChar(50)
+  dataValidade   DateTime?            @map("data_validade") @db.Date
+  motivo         String?              @db.VarChar(300)
+  usuarioId      Int                  @map("usuario_id")
+  desfeitoPorId  Int?                 @unique @map("desfeito_por") // movimento de desfazimento que anulou este
+  criadoEm       DateTime             @default(now()) @map("data_criacao")
+
+  produto     Produto           @relation(fields: [produtoId], references: [id])
+  usuario     Usuario           @relation(fields: [usuarioId], references: [id])
+  desfeitoPor MovimentoEstoque? @relation("Desfazimento", fields: [desfeitoPorId], references: [id])
+  desfaz      MovimentoEstoque? @relation("Desfazimento")
+
+  @@index([produtoId, criadoEm])
+  @@index([tipo])
+  @@index([criadoEm])
+  @@index([referenciaTipo, referenciaId])
+  @@map("movimento_estoque")
+}
+
+model Fornecedor {
+  id        Int      @id @default(autoincrement())
+  nome      String   @unique @db.VarChar(150)
+  documento String?  @db.VarChar(18) // CNPJ/CPF, só dígitos
+  telefone  String?  @db.VarChar(20)
+  email     String?  @db.VarChar(255)
+  ativo     Boolean  @default(true)
+  criadoEm  DateTime @default(now()) @map("data_criacao")
+
+  entradas EntradaEstoque[]
+  despesas Despesa[]
+  contas   ContaPagar[]
+
+  @@map("fornecedores")
+}
+
+model EntradaEstoque {
+  id           Int      @id @default(autoincrement())
+  numero       String   @unique @db.VarChar(30) // EST-20261115-000001
+  fornecedorId Int      @map("fornecedor_id")
+  numeroNf     String?  @map("numero_nf") @db.VarChar(50)
+  dataCompra   DateTime @map("data_compra") @db.Date
+  valorTotal   Decimal  @map("valor_total") @db.Decimal(12, 2)
+  observacoes  String?  @db.VarChar(500)
+  criadoPorId  Int      @map("criado_por")
+  criadoEm     DateTime @default(now()) @map("data_criacao")
+
+  fornecedor Fornecedor           @relation(fields: [fornecedorId], references: [id])
+  criadoPor  Usuario              @relation(fields: [criadoPorId], references: [id])
+  itens      ItemEntradaEstoque[]
+
+  @@index([dataCompra])
+  @@map("entrada_estoque")
+}
+
+model ItemEntradaEstoque {
+  id            Int       @id @default(autoincrement())
+  entradaId     Int       @map("entrada_id")
+  produtoId     Int       @map("produto_id")
+  quantidade    Decimal   @db.Decimal(12, 3)
+  precoUnitario Decimal   @map("preco_unitario") @db.Decimal(10, 2)
+  subtotal      Decimal   @db.Decimal(12, 2)
+  lote          String?   @db.VarChar(50)
+  dataValidade  DateTime? @map("data_validade") @db.Date
+
+  entrada EntradaEstoque @relation(fields: [entradaId], references: [id], onDelete: Cascade)
+  produto Produto        @relation(fields: [produtoId], references: [id])
+
+  @@index([entradaId])
+  @@index([produtoId])
+  @@map("entrada_estoque_itens")
+}
+
+enum StatusInventario {
+  em_andamento
+  finalizado
+  cancelado
+}
+
+model Inventario {
+  id             Int              @id @default(autoincrement())
+  numero         String           @unique @db.VarChar(30) // INV-20261115-000001
+  categoriaId    Int?             @map("categoria_id") // null = inventário total
+  status         StatusInventario @default(em_andamento)
+  totalProdutos  Int              @default(0) @map("total_produtos")
+  divergencias   Int              @default(0)
+  observacoes    String?          @db.VarChar(500)
+  realizadoPorId Int              @map("realizado_por")
+  iniciadoEm     DateTime         @default(now()) @map("data_inicio")
+  finalizadoEm   DateTime?        @map("data_fim")
+
+  realizadoPor Usuario          @relation(fields: [realizadoPorId], references: [id])
+  itens        ItemInventario[]
+
+  @@index([status])
+  @@map("inventarios")
+}
+
+model ItemInventario {
+  id                Int      @id @default(autoincrement())
+  inventarioId      Int      @map("inventario_id")
+  produtoId         Int      @map("produto_id")
+  quantidadeSistema Decimal  @map("quantidade_sistema") @db.Decimal(12, 3) // saldo no momento da finalização
+  quantidadeReal    Decimal? @map("quantidade_real") @db.Decimal(12, 3) // contada (null = ainda não contado)
+  diferenca         Decimal? @db.Decimal(12, 3)
+
+  inventario Inventario @relation(fields: [inventarioId], references: [id], onDelete: Cascade)
+  produto    Produto    @relation(fields: [produtoId], references: [id])
+
+  @@unique([inventarioId, produtoId])
+  @@map("inventario_items")
+}
+
+// ─── Módulo 2.5: Financeiro ─────────────────────────────────────────────────
+
+enum StatusSessaoCaixa {
+  aberto
+  fechado
+}
+
+/// Sessão de caixa: da abertura ao fechamento (MODULO_2_5, seção 5).
+model SessaoCaixa {
+  id                   Int               @id @default(autoincrement())
+  numero               String            @unique @db.VarChar(30) // CX-20261115-000001
+  caixa                String            @db.VarChar(10) // "01", "02"... (Configurações › Financeiro › número de caixas)
+  operadorId           Int               @map("operador_id")
+  status               StatusSessaoCaixa @default(aberto)
+  saldoInicial         Decimal           @map("saldo_inicial") @db.Decimal(12, 2)
+  abertoEm             DateTime          @default(now()) @map("data_abertura")
+  observacaoAbertura   String?           @map("observacao_abertura") @db.VarChar(300)
+  // Fechamento
+  fechadoEm            DateTime?         @map("data_fechamento")
+  fechadoPorId         Int?              @map("fechado_por")
+  saldoEsperado        Decimal?          @map("saldo_esperado") @db.Decimal(12, 2) // dinheiro que deveria estar na gaveta
+  saldoReal            Decimal?          @map("saldo_real") @db.Decimal(12, 2) // contado no fechamento
+  diferenca            Decimal?          @db.Decimal(12, 2)
+  motivoDiferenca      String?           @map("motivo_diferenca") @db.VarChar(100)
+  observacaoFechamento String?           @map("observacao_fechamento") @db.VarChar(300)
+
+  operador   Usuario          @relation("SessaoOperador", fields: [operadorId], references: [id])
+  fechadoPor Usuario?         @relation("SessaoFechadaPor", fields: [fechadoPorId], references: [id])
+  vendas     Venda[]
+  movimentos MovimentoCaixa[]
+  despesas   Despesa[]
+
+  // Índices únicos parciais (um caixa aberto por número e por operador) na migration.
+  @@index([status])
+  @@index([abertoEm])
+  @@map("sessoes_caixa")
+}
+
+enum TipoMovimentoCaixa {
+  suprimento // dinheiro colocado na gaveta
+  sangria // dinheiro retirado da gaveta (ex.: levado ao cofre)
+}
+
+model MovimentoCaixa {
+  id        Int                @id @default(autoincrement())
+  sessaoId  Int                @map("sessao_id")
+  tipo      TipoMovimentoCaixa
+  valor     Decimal            @db.Decimal(12, 2) // sempre positivo; o tipo define o sinal
+  motivo    String             @db.VarChar(300)
+  usuarioId Int                @map("usuario_id")
+  criadoEm  DateTime           @default(now()) @map("data_hora")
+
+  sessao  SessaoCaixa @relation(fields: [sessaoId], references: [id])
+  usuario Usuario     @relation(fields: [usuarioId], references: [id])
+
+  @@index([sessaoId])
+  @@map("movimentos_caixa")
+}
+
+enum TipoDespesa {
+  fixa
+  variavel
+}
+
+enum FormaPagamentoDespesa {
+  dinheiro
+  debito
+  credito
+  pix
+  boleto
+  transferencia
+}
+
+model Despesa {
+  id             Int                    @id @default(autoincrement())
+  numero         String                 @unique @db.VarChar(30) // DESP-20261115-000001
+  categoria      String                 @db.VarChar(60) // chave padrão (cmv, pessoal...) ou nome de categoria personalizada
+  descricao      String                 @db.VarChar(300)
+  valor          Decimal                @db.Decimal(12, 2)
+  dataDespesa    DateTime               @map("data_despesa") @db.Date
+  tipo           TipoDespesa            @default(variavel)
+  recorrente     String?                @db.VarChar(10) // mensal | semanal (informativo)
+  fornecedorId   Int?                   @map("fornecedor_id")
+  numeroNf       String?                @map("numero_nf") @db.VarChar(50)
+  // Paga na hora: forma e (se dinheiro do caixa) a sessão de onde saiu. A prazo: gera contas a pagar.
+  pagaNaHora     Boolean                @default(true) @map("paga_na_hora")
+  formaPagamento FormaPagamentoDespesa? @map("forma_pagamento")
+  sessaoCaixaId  Int?                   @map("sessao_caixa_id")
+  observacoes    String?                @db.VarChar(500)
+  criadoPorId    Int                    @map("criado_por")
+  criadoEm       DateTime               @default(now()) @map("data_criacao")
+  cancelada      Boolean                @default(false)
+
+  fornecedor  Fornecedor?  @relation(fields: [fornecedorId], references: [id])
+  sessaoCaixa SessaoCaixa? @relation(fields: [sessaoCaixaId], references: [id])
+  criadoPor   Usuario      @relation(fields: [criadoPorId], references: [id])
+  contas      ContaPagar[]
+
+  @@index([dataDespesa])
+  @@index([categoria])
+  @@map("despesas")
+}
+
+enum StatusContaPagar {
+  pendente
+  parcial
+  paga
+  cancelada
+}
+
+model ContaPagar {
+  id            Int              @id @default(autoincrement())
+  numero        String           @unique @db.VarChar(30) // CONTA-20261115-000001
+  despesaId     Int?             @map("despesa_id")
+  fornecedorId  Int?             @map("fornecedor_id")
+  descricao     String           @db.VarChar(300)
+  categoria     String           @db.VarChar(60)
+  valorTotal    Decimal          @map("valor_total") @db.Decimal(12, 2)
+  valorPago     Decimal          @default(0) @map("valor_pago") @db.Decimal(12, 2)
+  vencimento    DateTime         @map("data_vencimento") @db.Date
+  status        StatusContaPagar @default(pendente)
+  parcela       Int              @default(1) @map("parcela_numero")
+  totalParcelas Int              @default(1) @map("total_parcelas")
+  observacoes   String?          @db.VarChar(500)
+  criadoPorId   Int              @map("criado_por")
+  criadoEm      DateTime         @default(now()) @map("data_criacao")
+
+  despesa    Despesa?         @relation(fields: [despesaId], references: [id])
+  fornecedor Fornecedor?      @relation(fields: [fornecedorId], references: [id])
+  criadoPor  Usuario          @relation(fields: [criadoPorId], references: [id])
+  pagamentos PagamentoConta[]
+
+  @@index([status, vencimento])
+  @@map("contas_pagar")
+}
+
+model PagamentoConta {
+  id              Int                   @id @default(autoincrement())
+  contaId         Int                   @map("conta_id")
+  valor           Decimal               @db.Decimal(12, 2)
+  dataPagamento   DateTime              @map("data_pagamento") @db.Date
+  forma           FormaPagamentoDespesa @map("forma_pagamento")
+  numeroTransacao String?               @map("numero_transacao") @db.VarChar(100)
+  observacoes     String?               @db.VarChar(300)
+  usuarioId       Int                   @map("usuario_id")
+  criadoEm        DateTime              @default(now()) @map("data_criacao")
+
+  conta   ContaPagar @relation(fields: [contaId], references: [id])
+  usuario Usuario    @relation(fields: [usuarioId], references: [id])
+
+  @@index([contaId])
+  @@index([dataPagamento])
+  @@map("pagamentos_conta")
+}
