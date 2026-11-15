@@ -20,6 +20,8 @@ export type ProdutoEditavel = {
   quantidadeMinima: number;
   dataValidade: Date | null;
   lote: string | null;
+  exibirNoCardapio: boolean;
+  tempoPreparoMin: number | null;
 };
 
 export function ProdutoForm({
@@ -27,11 +29,14 @@ export function ProdutoForm({
   categorias,
   margemMinimaPct,
   podeEditar,
+  tempoPadraoMin,
 }: {
   produto?: ProdutoEditavel;
   categorias: { id: number; nome: string; icone: string | null; ativa: boolean }[];
   margemMinimaPct: number;
   podeEditar: boolean;
+  /** Configurações › Vendas › tempo médio de preparo. */
+  tempoPadraoMin: number;
 }) {
   const opcoesCategoria = Object.fromEntries([
     ["", "Selecione..."],
@@ -98,6 +103,23 @@ export function ProdutoForm({
           rotulo="Quantidade mínima"
           valor={produto?.quantidadeMinima ?? 0}
           ajuda="Ao atingir, gera alerta de estoque"
+        />
+      </Grupo>
+
+      <Grupo titulo="Cardápio digital (QR Code)">
+        <CampoCheckbox
+          nome="exibirNoCardapio"
+          rotulo="Aparece no cardápio digital"
+          ajuda="Clientes podem pedir pelo celular"
+          valor={produto?.exibirNoCardapio ?? true}
+        />
+        <CampoTexto
+          nome="tempoPreparoMin"
+          rotulo="Tempo de preparo (min)"
+          valor={produto?.tempoPreparoMin != null ? String(produto.tempoPreparoMin) : ""}
+          inputMode="numeric"
+          placeholder={`Padrão: ${tempoPadraoMin} min`}
+          ajuda="Usado no tempo estimado da fila. 0 para bebidas prontas"
         />
       </Grupo>
 

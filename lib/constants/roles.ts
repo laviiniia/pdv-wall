@@ -29,6 +29,7 @@ export const PERMISSOES_PADRAO: Record<RoleNome, { descricao: string; permissoes
       "pedidos.criar",
       "pedidos.mudar_status",
       "pedidos.cancelar",
+      "mesas.gerenciar",
       "estoque.ver",
       "estoque.criar_entrada",
       "financeiro.ver",
@@ -72,6 +73,11 @@ export const PERMISSAO = {
   VENDAS_CANCELAR: "vendas.cancelar",
   VENDAS_CANCELAR_PROPRIAS: "vendas.cancelar_proprias",
   CUPONS_GERENCIAR: "cupons.gerenciar",
+  // Pedidos online (MODULO_2_3)
+  PEDIDOS_VER: "pedidos.ver",
+  PEDIDOS_MUDAR_STATUS: "pedidos.mudar_status",
+  PEDIDOS_CANCELAR: "pedidos.cancelar",
+  MESAS_GERENCIAR: "mesas.gerenciar",
 } as const;
 
 export function temPermissao(permissoes: string[], requerida: string): boolean {

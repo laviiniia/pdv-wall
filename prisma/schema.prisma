@@ -44,19 +44,20 @@ model Usuario {
   criadoEm              DateTime  @default(now()) @map("data_criacao")
   atualizadoEm          DateTime  @updatedAt @map("data_atualizacao")
 
-  role               Role                 @relation(fields: [roleId], references: [id])
-  criadoPor          Usuario?             @relation("UsuarioCriadoPor", fields: [criadoPorId], references: [id])
-  usuariosCriados    Usuario[]            @relation("UsuarioCriadoPor")
+  role               Role                    @relation(fields: [roleId], references: [id])
+  criadoPor          Usuario?                @relation("UsuarioCriadoPor", fields: [criadoPorId], references: [id])
+  usuariosCriados    Usuario[]               @relation("UsuarioCriadoPor")
   auditorias         Auditoria[]
   resetTokens        ResetPasswordToken[]
-  categoriasCriadas  Categoria[]          @relation("CategoriaCriadaPor")
-  categoriasEditadas Categoria[]          @relation("CategoriaEditadaPor")
-  produtosCriados    Produto[]            @relation("ProdutoCriadoPor")
-  produtosEditados   Produto[]            @relation("ProdutoEditadoPor")
+  categoriasCriadas  Categoria[]             @relation("CategoriaCriadaPor")
+  categoriasEditadas Categoria[]             @relation("CategoriaEditadaPor")
+  produtosCriados    Produto[]               @relation("ProdutoCriadoPor")
+  produtosEditados   Produto[]               @relation("ProdutoEditadoPor")
   configuracoes      Configuracao[]
-  vendas             Venda[]              @relation("VendaOperador")
-  vendasCanceladas   Venda[]              @relation("VendaCanceladaPor")
+  vendas             Venda[]                 @relation("VendaOperador")
+  vendasCanceladas   Venda[]                 @relation("VendaCanceladaPor")
   cuponsCriados      CupomPromocional[]
+  historicoPedidos   HistoricoStatusPedido[]
 
   @@index([roleId])
   @@index([ativo])
@@ -168,15 +169,20 @@ model Produto {
   quantidadeMinima Int           @default(0) @map("quantidade_minima")
   dataValidade     DateTime?     @map("data_validade") @db.Date
   lote             String?       @db.VarChar(50)
+  // Cardápio digital (MODULO_2_3)
+  exibirNoCardapio Boolean       @default(true) @map("exibir_no_cardapio")
+  tempoPreparoMin  Int?          @map("tempo_preparo_min") // null = padrão de Configurações › Vendas
   criadoPorId      Int           @map("criado_por")
   editadoPorId     Int?          @map("editado_por")
   criadoEm         DateTime      @default(now()) @map("data_cadastro")
   editadoEm        DateTime      @updatedAt @map("data_edicao")
 
-  categoria  Categoria   @relation(fields: [categoriaId], references: [id])
-  criadoPor  Usuario     @relation("ProdutoCriadoPor", fields: [criadoPorId], references: [id])
-  editadoPor Usuario?    @relation("ProdutoEditadoPor", fields: [editadoPorId], references: [id])
-  itensVenda ItemVenda[]
+  categoria         Categoria          @relation(fields: [categoriaId], references: [id])
+  criadoPor         Usuario            @relation("ProdutoCriadoPor", fields: [criadoPorId], references: [id])
+  editadoPor        Usuario?           @relation("ProdutoEditadoPor", fields: [editadoPorId], references: [id])
+  itensVenda        ItemVenda[]
+  adicionais        AdicionalProduto[]
+  itensPedidoOnline ItemPedidoOnline[]
 
   // Restrições CHECK (preço de custo > 0 e venda > custo) ficam na migration
   // 20261115*_produtos_regras: o Prisma não as expressa no schema.
@@ -295,4 +301,119 @@ model CupomPromocional {
 
   @@index([expiracao])
   @@map("cupons_promocionais")
+}
+
+// ─── Módulo 2.3: Pedidos online via QR Code ─────────────────────────────────
+
+model Mesa {
+  id           Int      @id @default(autoincrement())
+  numero       Int      @unique
+  // Token aleatório que vai no QR Code (/mesa/{token}); trocá-lo invalida QR Codes impressos.
+  token        String   @unique @db.VarChar(40)
+  capacidade   Int      @default(4)
+  ativa        Boolean  @default(true)
+  criadoEm     DateTime @default(now()) @map("data_criacao")
+  atualizadoEm DateTime @updatedAt @map("data_atualizacao")
+
+  pedidos PedidoOnline[]
+
+  @@map("mesas")
+}
+
+enum TipoAdicional {
+  adicao
+  remocao
+}
+
+/// Personalizações do produto no cardápio (MODULO_2_3, seção 3: adições com preço e remoções).
+model AdicionalProduto {
+  id        Int           @id @default(autoincrement())
+  produtoId Int           @map("produto_id")
+  tipo      TipoAdicional
+  nome      String        @db.VarChar(60)
+  valor     Decimal       @default(0) @db.Decimal(10, 2) // acréscimo (só para adições)
+  ativo     Boolean       @default(true)
+  ordem     Int           @default(0)
+
+  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@index([produtoId])
+  @@map("adicionais_produto")
+}
+
+enum StatusPedido {
+  confirmado
+  preparando
+  pausado
+  pronto
+  entregue
+  cancelado
+}
+
+model PedidoOnline {
+  id                 Int          @id @default(autoincrement())
+  numero             String       @unique @db.VarChar(30) // PED-20261115-000012
+  // Token secreto do link de acompanhamento (/pedido/{token}); o cliente não faz login.
+  token              String       @unique @db.VarChar(40)
+  mesaId             Int          @map("mesa_id")
+  clienteNome        String?      @map("cliente_nome") @db.VarChar(100)
+  clienteTelefone    String?      @map("cliente_telefone") @db.VarChar(20)
+  alergias           String?      @db.VarChar(200)
+  observacoes        String?      @db.VarChar(300)
+  status             StatusPedido @default(confirmado)
+  total              Decimal      @db.Decimal(10, 2)
+  tempoPreparoMin    Int          @map("tempo_preparo_min") // maior tempo entre os itens
+  tempoEstimadoMin   Int          @map("tempo_estimado_min") // preparo + espera na fila, no momento do pedido
+  motivoCancelamento String?      @map("motivo_cancelamento")
+  avaliacaoNota      Int?         @map("avaliacao_nota") // 1 a 5
+  avaliacaoTexto     String?      @map("avaliacao_texto") @db.VarChar(500)
+  ipOrigem           String?      @map("ip_origem") @db.VarChar(45)
+  criadoEm           DateTime     @default(now()) @map("data_criacao")
+  iniciadoEm         DateTime?    @map("data_inicio_preparo")
+  prontoEm           DateTime?    @map("data_pronto")
+  entregueEm         DateTime?    @map("data_entrega")
+  atualizadoEm       DateTime     @updatedAt @map("data_atualizacao")
+
+  mesa      Mesa                    @relation(fields: [mesaId], references: [id])
+  itens     ItemPedidoOnline[]
+  historico HistoricoStatusPedido[]
+
+  @@index([status])
+  @@index([mesaId, criadoEm])
+  @@index([criadoEm])
+  @@map("pedidos_online")
+}
+
+model ItemPedidoOnline {
+  id              Int     @id @default(autoincrement())
+  pedidoId        Int     @map("pedido_id")
+  produtoId       Int     @map("produto_id")
+  nomeProduto     String  @map("nome_produto") @db.VarChar(100)
+  quantidade      Int
+  precoUnitario   Decimal @map("preco_unitario") @db.Decimal(10, 2) // preço base + adições
+  // Fotografia das personalizações escolhidas: [{ tipo, nome, valor }]
+  personalizacoes Json    @default("[]")
+  observacao      String? @db.VarChar(100)
+  tempoPreparoMin Int     @map("tempo_preparo_min")
+
+  pedido  PedidoOnline @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produto Produto      @relation(fields: [produtoId], references: [id])
+
+  @@index([pedidoId])
+  @@map("itens_pedido_online")
+}
+
+model HistoricoStatusPedido {
+  id        Int          @id @default(autoincrement())
+  pedidoId  Int          @map("pedido_id")
+  status    StatusPedido
+  usuarioId Int?         @map("usuario_id") // null = o próprio cliente
+  detalhe   String?      @db.VarChar(300)
+  criadoEm  DateTime     @default(now()) @map("data_hora")
+
+  pedido  PedidoOnline @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  usuario Usuario?     @relation(fields: [usuarioId], references: [id])
+
+  @@index([pedidoId])
+  @@map("historico_status_pedido")
 }

@@ -2,7 +2,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, verificarSessao } from "@/lib/auth/jwt";
 
 // Checagem otimista (só o cookie, sem banco). A verificação completa fica em lib/auth/dal.ts.
-const ROTAS_PUBLICAS = ["/login", "/recuperar-senha", "/redefinir-senha"];
+// /mesa e /pedido: cardápio digital e acompanhamento do cliente (MODULO_2_3), sem login.
+const ROTAS_PUBLICAS = ["/login", "/recuperar-senha", "/redefinir-senha", "/mesa", "/pedido"];
 
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;

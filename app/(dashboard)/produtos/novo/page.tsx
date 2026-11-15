@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Novo produto" };
 
 export default async function NovoProdutoPage() {
   await exigirPermissao(PERMISSAO.PRODUTOS_GERENCIAR);
-  const [categorias, financeiro] = await Promise.all([listarCategoriasParaSelect(), getConfig("financeiro")]);
+  const [categorias, financeiro, vendas] = await Promise.all([listarCategoriasParaSelect(), getConfig("financeiro"), getConfig("vendas")]);
 
   return (
     <>
@@ -21,7 +21,7 @@ export default async function NovoProdutoPage() {
           Nenhuma categoria ativa. <Link href="/produtos/categorias/nova" className="text-primary hover:underline">Crie uma categoria</Link> antes de cadastrar produtos.
         </p>
       ) : (
-        <ProdutoForm categorias={categorias} margemMinimaPct={financeiro.margemMinimaPct} podeEditar />
+        <ProdutoForm categorias={categorias} margemMinimaPct={financeiro.margemMinimaPct} tempoPadraoMin={vendas.tempoPreparoMin} podeEditar />
       )}
     </>
   );

@@ -10,7 +10,7 @@
 | 4 | [Configurações](modulos/MODULO_4_CONFIGURACOES.md) | `/configuracoes` | Empresa, Vendas, Estoque e Financeiro prontos; falta notificações, interface, backups, integrações |
 | 2.1 | [Gestão de Produtos](modulos/MODULO_2_1_GESTAO_PRODUTOS.md) | `/produtos` | Pronto; falta upload de imagem, status de estoque e exclusão definitiva |
 | 2.2 | [Vendas PDV](modulos/MODULO_2_2_VENDAS_PDV.md) | `/vendas` | Pronto; falta integração com maquininha/PIX, rascunhos, estoque e caixa |
-| 2.3 | [Pedidos Online / QR Code](modulos/MODULO_2_3_PEDIDOS_ONLINE_QR_CODE.md) | `/pedidos-online` | A fazer |
+| 2.3 | [Pedidos Online / QR Code](modulos/MODULO_2_3_PEDIDOS_ONLINE_QR_CODE.md) | `/pedidos-online`, `/mesa/[token]` | Pronto; "tempo real" por consulta periódica (sem Supabase), sem SMS/push nem pagamento pelo celular |
 | 2.4 | [Controle de Estoque](modulos/MODULO_2_4_CONTROLE_ESTOQUE.md) | `/estoque` | A fazer |
 | 2.5 | [Financeiro](modulos/MODULO_2_5_FINANCEIRO.md) | `/financeiro` | A fazer |
 | 2.6 | [Relatórios](modulos/MODULO_2_6_RELATORIOS.md) | `/relatorios` | A fazer |
@@ -30,6 +30,16 @@ A documentação foi escrita para Next.js 14 / Prisma 5. O projeto usa versões 
 - **Auth:** a documentação cita tanto Supabase Auth quanto JWT próprio. O Módulo 3 especifica JWT próprio (`jose` + `bcryptjs`), que é o caminho adotado.
 - **Onde fica o token:** a documentação sugere `localStorage` + header `Authorization`. O código guarda o JWT num **cookie httpOnly**, que o JavaScript da página não consegue ler (protege contra roubo por XSS). A sessão dura 8h, ou 7 dias com "manter conectado". Ainda não há refresh token separado: ao expirar, a pessoa faz login de novo.
 - **Recuperar senha:** a resposta é sempre a mesma ("se o e-mail estiver cadastrado...") para não revelar quem tem conta; a documentação previa avisar quando o e-mail não existe. A rota é `/redefinir-senha`, não `/reset-senha`. O token é guardado só como hash SHA-256 (sem a coluna `token_plain`) e sessões antigas são derrubadas comparando o `iat` do JWT com `password_changed_at`.
+- **Pedidos online / QR Code (Módulo 2.3):**
+  - **"tempo real" sem WebSocket:** a doc prevê Supabase Realtime, que ainda não está configurado. A cozinha consulta `/api/cozinha` a cada 4 s e o cliente consulta `/api/pedidos/[token]` a cada 5 s (pausa com a aba em segundo plano). Tudo passa pelo hook `lib/pedidos/useAtualizacao.ts`: para usar Realtime, troca-se só ele;
+  - **acesso sem login por token:** o QR Code leva a `/mesa/{token}` (24 caracteres aleatórios por mesa; "Novo QR" troca o token e invalida o impresso). O link de acompanhamento `/pedido/{token}` tem token próprio por pedido. `/mesa` e `/pedido` são rotas públicas no `proxy.ts`; as ações públicas só aceitam esses tokens;
+  - **preço nunca vem do celular:** o servidor recalcula preço base + adicionais com o banco e grava uma "fotografia" dos itens e das personalizações;
+  - **fila (seção 5.1):** tempo estimado = maior tempo de preparo entre os itens + maior tempo restante entre os pedidos à frente (cozinha em paralelo). A previsão e a posição na fila são recalculadas a cada consulta. Tempo de preparo por produto (campo novo; vazio = padrão de Configurações › Vendas — bebidas prontas devem ser 0);
+  - **regras de Configurações › Vendas:** liga/desliga, horário (aceita virar a meia-noite; início = fim = 24h) e limite de pedidos simultâneos na cozinha. Anti-abuso: até 5 pedidos por mesa e 10 por IP por hora;
+  - **status:** confirmado → preparando ↔ pausado → pronto → entregue, com cancelamento (cozinha, com motivo visível ao cliente) e "reabrir" de pronto para preparo. O cliente pode cancelar enquanto a cozinha não começou. Cada mudança vai para `historico_status_pedido`; transições são condicionais ao status atual (dois cliques simultâneos não geram transição dupla);
+  - **personalizações:** em vez das tabelas `menu_digital` e `customizacoes_produto`, o produto ganhou "aparece no cardápio" e a tabela `adicionais_produto` (adição com preço ou remoção). Substituições da doc são cadastradas como adição com preço;
+  - **cozinha:** Kanban com cronômetros, destaque de atraso, alergias em vermelho, bipe (Web Audio) quando chega pedido, etiqueta de preparo para impressora térmica em `/etiqueta/[id]` e estatísticas do dia;
+  - **ainda fora:** notificações por SMS/push/desktop, "chamar garçom", pagamento pelo celular e fechamento do pedido no caixa (o cliente paga no PDV, lançando os itens), status da mesa (ocupada/limpando), filtros "apenas meus"/por categoria no painel, checagem de estoque.
 - **Vendas / PDV (Módulo 2.2):**
   - **preços nunca vêm do navegador:** a tela manda só produto e quantidade; o servidor busca preço e custo no banco, recalcula tudo em centavos (`lib/vendas/calculo.ts`, mesmo código da prévia na tela) e grava venda, itens e pagamentos numa transação. `CHECK`s no banco garantem `total = subtotal − desconto`, quantidades e valores positivos;
   - **itens guardam uma "fotografia"** do produto (nome, SKU, preço e custo do momento), como a doc pede, para o histórico não mudar quando o produto for editado. Quantidade aceita fração (kg, L); produto "un" só aceita inteiro;

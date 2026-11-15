@@ -167,6 +167,8 @@ function dadosProduto(d: ProdutoInput) {
     quantidadeMinima: d.quantidadeMinima,
     dataValidade: paraData(d.dataValidade),
     lote: d.lote ?? null,
+    exibirNoCardapio: d.exibirNoCardapio,
+    tempoPreparoMin: d.tempoPreparoMin ?? null,
   };
 }
 
@@ -223,6 +225,8 @@ export async function editarProduto(
     quantidade_minima: p.quantidadeMinima,
     data_validade: p.dataValidade?.toISOString().slice(0, 10) ?? null,
     lote: p.lote ?? null,
+    exibir_no_cardapio: p.exibirNoCardapio,
+    tempo_preparo_min: p.tempoPreparoMin ?? null,
   });
   const antes = comparavel(atual);
   const depois = comparavel(novo);

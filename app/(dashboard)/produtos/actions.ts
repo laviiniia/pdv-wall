@@ -33,6 +33,8 @@ function lerProduto(fd: FormData) {
     quantidadeMinima: fd.get("quantidadeMinima"),
     dataValidade: fd.get("dataValidade"),
     lote: fd.get("lote"),
+    exibirNoCardapio: fd.get("exibirNoCardapio"),
+    tempoPreparoMin: fd.get("tempoPreparoMin"),
   });
 }
 

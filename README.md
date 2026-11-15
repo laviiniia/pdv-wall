@@ -99,4 +99,6 @@ Convenções que vamos seguir conforme os módulos forem implementados (ver `doc
 - [ ] Módulo 2.1 (pendente): upload de imagem (depende do Supabase Storage), status de estoque (Módulo 2.4) e exclusão definitiva (precisa das vendas do Módulo 2.2)
 - [x] Módulo 2.2: PDV em `/vendas` (busca por nome/SKU/código de barras, carrinho, desconto por perfil e cupons, pagamento em dinheiro/débito/crédito/PIX/combinado, cupom para impressão, vendas do dia, cancelamento) e cupons em `/vendas/cupons`
 - [ ] Módulo 2.2 (pendente): integração com maquininha e PIX dinâmico, rascunhos de venda no banco, aprovação de desconto por gerente na hora, baixa de estoque (2.4) e caixa (2.5)
-- [ ] Módulos 2.3 a 2.6
+- [x] Módulo 2.3: pedidos pelo QR Code da mesa — cardápio público em `/mesa/[token]`, acompanhamento em `/pedido/[token]`, painel da cozinha em `/pedidos-online`, mesas e QR Codes em `/pedidos-online/mesas`
+- [ ] Módulo 2.3 (pendente): Supabase Realtime no lugar da consulta a cada 4–5 s, notificações por SMS/push, "chamar garçom", pagamento pelo celular e fechamento do pedido no PDV
+- [ ] Módulos 2.4 a 2.6

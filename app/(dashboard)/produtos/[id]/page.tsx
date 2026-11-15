@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Adicionais } from "@/components/produtos/Adicionais";
 import { ProdutoForm } from "@/components/produtos/ProdutoForm";
 import { Selo, SeloValidade } from "@/components/produtos/Selos";
 import { getUsuarioAtual } from "@/lib/auth/dal";
 import { PERMISSAO, temPermissao } from "@/lib/constants/roles";
 import { getConfig } from "@/lib/services/configuracoes.service";
+import { listarAdicionais } from "@/lib/services/pedidos.service";
 import { buscarProduto, historicoProduto, listarCategoriasParaSelect } from "@/lib/services/produtos.service";
 import { situacaoValidade } from "@/lib/validations/produto.schema";
 
@@ -26,6 +28,8 @@ const ROTULOS_CAMPO: Record<string, string> = {
   quantidade_minima: "Qtd. mínima",
   data_validade: "Validade",
   lote: "Lote",
+  exibir_no_cardapio: "No cardápio",
+  tempo_preparo_min: "Tempo de preparo",
 };
 
 const ROTULOS_ACAO: Record<string, string> = {
@@ -53,11 +57,13 @@ export default async function ProdutoPage({ params }: PageProps<"/produtos/[id]"
   if (!produto) notFound();
 
   const podeGerenciar = temPermissao(usuario.permissoes, PERMISSAO.PRODUTOS_GERENCIAR);
-  const [categorias, financeiro, estoque, historico] = await Promise.all([
+  const [categorias, financeiro, estoque, vendas, historico, adicionais] = await Promise.all([
     listarCategoriasParaSelect(produto.categoriaId),
     getConfig("financeiro"),
     getConfig("estoque"),
+    getConfig("vendas"),
     historicoProduto(produtoId),
+    listarAdicionais(produtoId),
   ]);
   const nomesCategoria = new Map(categorias.map((c) => [c.id, c.nome]));
   const validade = situacaoValidade(produto.dataValidade, estoque.diasAlertaValidade);
@@ -83,6 +89,13 @@ export default async function ProdutoPage({ params }: PageProps<"/produtos/[id]"
         produto={produto}
         categorias={categorias}
         margemMinimaPct={financeiro.margemMinimaPct}
+        tempoPadraoMin={vendas.tempoPreparoMin}
+        podeEditar={podeGerenciar}
+      />
+
+      <Adicionais
+        produtoId={produto.id}
+        adicionais={adicionais.map((a) => ({ id: a.id, tipo: a.tipo, nome: a.nome, valor: Number(a.valor), ativo: a.ativo }))}
         podeEditar={podeGerenciar}
       />
 
