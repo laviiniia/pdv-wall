@@ -56,6 +56,7 @@ app/
     vendas/              Módulo 2.2
     pedidos-online/      Módulo 2.3
     estoque/             Módulo 2.4
+    caixa/               Módulo 2.5 (abertura/fechamento de caixa)
     financeiro/          Módulo 2.5
     relatorios/          Módulo 2.6
     configuracoes/       Módulo 4
@@ -98,9 +99,12 @@ Convenções que vamos seguir conforme os módulos forem implementados (ver `doc
 - [x] Módulo 2.1: produtos e categorias em `/produtos` (cadastro, edição, desativar/reativar, margem ao vivo, busca/filtros/ordenação/paginação, alertas de margem e validade, histórico de alterações)
 - [ ] Módulo 2.1 (pendente): upload de imagem (depende do Supabase Storage) e exclusão definitiva de produto sem vendas
 - [x] Módulo 2.2: PDV em `/vendas` (busca por nome/SKU/código de barras, carrinho, desconto por perfil e cupons, pagamento em dinheiro/débito/crédito/PIX/combinado, cupom para impressão, vendas do dia, cancelamento) e cupons em `/vendas/cupons`
-- [ ] Módulo 2.2 (pendente): integração com maquininha e PIX dinâmico, rascunhos de venda no banco, aprovação de desconto por gerente na hora, baixa de estoque (2.4) e caixa (2.5)
+- [ ] Módulo 2.2 (pendente): integração com maquininha e PIX dinâmico, rascunhos de venda no banco, aprovação de desconto por gerente na hora
 - [x] Módulo 2.3: pedidos pelo QR Code da mesa — cardápio público em `/mesa/[token]`, acompanhamento em `/pedido/[token]`, painel da cozinha em `/pedidos-online`, mesas e QR Codes em `/pedidos-online/mesas`
 - [ ] Módulo 2.3 (pendente): Supabase Realtime no lugar da consulta a cada 4–5 s, notificações por SMS/push, "chamar garçom", pagamento pelo celular e fechamento do pedido no PDV
 - [x] Módulo 2.4: estoque em `/estoque` — painel com alertas e valor, entrada por compra (com fornecedor), saída/ajuste manual, histórico com desfazer, inventário por contagem física; baixa automática nas vendas, estorno no cancelamento e bloqueio de produto sem estoque no PDV e no cardápio
 - [ ] Módulo 2.4 (pendente): notificações por e-mail/SMS, lotes com FIFO (hoje o produto guarda só o último lote/validade), relatórios de estoque, pedidos de compra pendentes
-- [ ] Módulos 2.5 e 2.6
+- [x] Módulo 2.5: caixa em `/caixa` (abertura com saldo sugerido, sangria/suprimento, fechamento com conferência e motivo de diferença; vender exige caixa aberto) e financeiro em `/financeiro` — painel do mês (faturamento, CMV, despesas por categoria, lucro, ticket médio, comparação com o mês anterior), despesas pagas na hora ou a prazo com parcelas, contas a pagar com pagamento parcial e fluxo de caixa diário
+- [ ] Módulo 2.5 (pendente): despesas recorrentes geradas automaticamente, anexo de nota fiscal, conciliação bancária
+- [x] Módulo 2.6: relatórios em `/relatorios` — visão geral com comparação (período anterior ou ano anterior), DRE com impostos e taxas de cartão estimados, vendas por categoria e produto, heatmap de horários e formas de pagamento; exportação CSV e impressão/PDF pelo navegador
+- [ ] Módulo 2.6 (pendente): dashboard personalizável por widgets, exportação Excel/JSON/PNG, agendamento por e-mail, insights automáticos, separação PDV × pedidos online

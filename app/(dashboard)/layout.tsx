@@ -28,7 +28,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/">) {
     <div className="flex min-h-screen flex-1 flex-col md:flex-row">
       <MobileNav {...navegacao} />
       <Sidebar {...navegacao} />
-      <main className="flex-1 overflow-x-hidden p-6 md:p-8">{children}</main>
+      <main className="flex-1 overflow-x-hidden p-6 md:p-8 print:p-0">{children}</main>
     </div>
   );
 }

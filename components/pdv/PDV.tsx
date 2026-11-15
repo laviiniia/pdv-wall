@@ -50,6 +50,7 @@ export function PDV({
   formasAceitas,
   parcelamentoMax,
   bloquearSemEstoque,
+  caixaAberto,
 }: {
   categorias: Categoria[];
   maisVendidos: ProdutoPDVSerializado[];
@@ -61,6 +62,8 @@ export function PDV({
   parcelamentoMax: number;
   /** Configurações › Estoque › não permitir estoque negativo. */
   bloquearSemEstoque: boolean;
+  /** Sem sessão de caixa aberta o operador monta o carrinho, mas não finaliza. */
+  caixaAberto: boolean;
 }) {
   // ─── Carrinho (guardado no navegador: sobrevive a recarregar a página) ────
   // Lido na criação do estado; só é exibido depois da hidratação, para o HTML
@@ -560,7 +563,8 @@ export function PDV({
               <Button
                 size="lg"
                 className="mt-2 h-11 text-base"
-                disabled={itens.length === 0}
+                disabled={itens.length === 0 || !caixaAberto}
+                title={caixaAberto ? undefined : "Abra o caixa para vender"}
                 onClick={() => {
                   setErroFinal(undefined);
                   setPagamentoAberto(true);

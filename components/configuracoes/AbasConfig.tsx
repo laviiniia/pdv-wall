@@ -9,7 +9,7 @@ export function AbasConfig({ abas }: { abas: { href: string; titulo: string }[] 
   return (
     <nav className="mb-6 flex gap-1 overflow-x-auto border-b" aria-label="Seções de configurações">
       {abas.map((a) => {
-        const ativa = pathname === a.href;
+        const ativa = pathname === a.href || (a.href !== abas[0]?.href && pathname.startsWith(`${a.href}/`));
         return (
           <Link
             key={a.href}

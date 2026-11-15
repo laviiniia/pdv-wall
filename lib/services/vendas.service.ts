@@ -8,6 +8,7 @@ import type { CupomInput, FinalizarVendaInput } from "@/lib/validations/venda.sc
 import type { ContextoRequisicao } from "./auth.service";
 import { getConfig } from "./configuracoes.service";
 import { baixarEstoqueVenda, estornarEstoqueVenda } from "./estoque.service";
+import { sessaoAbertaDoOperador } from "./caixa.service";
 import { EstoqueInsuficiente } from "@/lib/estoque/movimentar";
 
 type Usuario = { id: number; email: string; nome: string; role: { nome: string }; permissoes: string[] };
@@ -201,10 +202,14 @@ export async function finalizarVenda(entrada: FinalizarVendaInput, usuario: Usua
   if (!pg.ok) return pg;
 
   // 4. Grava tudo numa transação.
-  const [empresa, estoqueCfg] = await Promise.all([getConfig("empresa"), getConfig("estoque")]);
+  const [empresa, estoqueCfg, sessao] = await Promise.all([getConfig("empresa"), getConfig("estoque"), sessaoAbertaDoOperador(usuario.id)]);
+  // MODULO_2_5: sem caixa aberto não há venda; cada venda fica ligada à sessão de caixa do operador.
+  if (!sessao) return { ok: false, erro: "Abra o caixa antes de vender (menu Caixa)." };
   const dia = dataNoFuso(new Date(), empresa.funcionamento.timezone).replace(/-/g, "");
   try {
     const venda = await prisma.$transaction(async (tx) => {
+      const aberta = await tx.sessaoCaixa.findFirst({ where: { id: sessao.id, status: "aberto" }, select: { id: true } });
+      if (!aberta) throw new ErroVenda("Seu caixa foi fechado. Abra o caixa de novo para vender.");
       if (cupomId !== null) {
         // Reserva o uso do cupom de forma atômica (evita ultrapassar o limite com vendas simultâneas).
         const reservado = await tx.cupomPromocional.updateMany({
@@ -218,6 +223,8 @@ export async function finalizarVenda(entrada: FinalizarVendaInput, usuario: Usua
         data: {
           numero: `TMP-${crypto.randomUUID()}`.slice(0, 30),
           operadorId: usuario.id,
+          sessaoCaixaId: sessao.id,
+          caixa: sessao.caixa,
           subtotal: dec(totais.subtotal),
           descontoTipo: entrada.desconto?.tipo ?? null,
           descontoPercentual: totais.descontoValor > 0 ? new Prisma.Decimal(totais.descontoPercentual.toFixed(2)) : null,

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { History, Ticket } from "lucide-react";
+import { History, Landmark, Ticket } from "lucide-react";
 import { PDV } from "@/components/pdv/PDV";
 import { exigirPermissao } from "@/lib/auth/dal";
 import { PERMISSAO, temPermissao } from "@/lib/constants/roles";
+import { sessaoAbertaDoOperador } from "@/lib/services/caixa.service";
 import { getConfig } from "@/lib/services/configuracoes.service";
 import { categoriasPDV, maisVendidos, paraPDV, podeVerVendas, regrasDesconto } from "@/lib/services/vendas.service";
 
@@ -11,12 +12,13 @@ export const metadata: Metadata = { title: "PDV" };
 
 export default async function VendasPage() {
   const usuario = await exigirPermissao(PERMISSAO.VENDAS_CRIAR);
-  const [categorias, populares, regras, vendas, estoque] = await Promise.all([
+  const [categorias, populares, regras, vendas, estoque, sessao] = await Promise.all([
     categoriasPDV(),
     maisVendidos(),
     regrasDesconto(usuario),
     getConfig("vendas"),
     getConfig("estoque"),
+    sessaoAbertaDoOperador(usuario.id),
   ]);
 
   return (
@@ -36,7 +38,20 @@ export default async function VendasPage() {
           )}
         </div>
       </div>
+      {sessao ? (
+        <p className="mb-3 text-xs text-muted-foreground">
+          Caixa {sessao.caixa} aberto · <Link href="/caixa" className="hover:underline">ver caixa</Link>
+        </p>
+      ) : (
+        <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+          <span>Seu caixa está fechado. Abra o caixa para poder finalizar vendas.</span>
+          <Link href="/caixa" className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-primary-foreground hover:bg-primary/90">
+            <Landmark className="size-4" /> Abrir caixa
+          </Link>
+        </div>
+      )}
       <PDV
+        caixaAberto={!!sessao}
         categorias={categorias}
         maisVendidos={populares.map(paraPDV)}
         bloquearSemEstoque={!estoque.permitirEstoqueNegativo}

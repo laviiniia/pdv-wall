@@ -61,6 +61,12 @@ model Usuario {
   movimentosEstoque  MovimentoEstoque[]
   entradasEstoque    EntradaEstoque[]
   inventarios        Inventario[]
+  sessoesCaixa       SessaoCaixa[]           @relation("SessaoOperador")
+  sessoesFechadas    SessaoCaixa[]           @relation("SessaoFechadaPor")
+  movimentosCaixa    MovimentoCaixa[]
+  despesas           Despesa[]
+  contasCriadas      ContaPagar[]
+  pagamentosConta    PagamentoConta[]
 
   @@index([roleId])
   @@index([ativo])
@@ -226,7 +232,8 @@ model Venda {
   id                 Int           @id @default(autoincrement())
   numero             String        @unique @db.VarChar(30) // VEND-20261115-000123
   operadorId         Int           @map("operador_id")
-  caixa              String?       @db.VarChar(10) // preenchido quando existir o controle de caixa (Módulo 2.5)
+  caixa              String?       @db.VarChar(10) // número do caixa físico (Módulo 2.5)
+  sessaoCaixaId      Int?          @map("sessao_caixa_id")
   subtotal           Decimal       @db.Decimal(10, 2) // soma dos itens, sem desconto
   descontoTipo       TipoDesconto? @map("desconto_tipo")
   descontoPercentual Decimal?      @map("desconto_percentual") @db.Decimal(5, 2)
@@ -243,6 +250,7 @@ model Venda {
   operador     Usuario           @relation("VendaOperador", fields: [operadorId], references: [id])
   canceladoPor Usuario?          @relation("VendaCanceladaPor", fields: [canceladoPorId], references: [id])
   cupom        CupomPromocional? @relation(fields: [cupomId], references: [id])
+  sessaoCaixa  SessaoCaixa?      @relation(fields: [sessaoCaixaId], references: [id])
   itens        ItemVenda[]
   pagamentos   Pagamento[]
 
@@ -482,6 +490,8 @@ model Fornecedor {
   criadoEm  DateTime @default(now()) @map("data_criacao")
 
   entradas EntradaEstoque[]
+  despesas Despesa[]
+  contas   ContaPagar[]
 
   @@map("fornecedores")
 }
@@ -561,4 +571,159 @@ model ItemInventario {
 
   @@unique([inventarioId, produtoId])
   @@map("inventario_items")
+}
+
+// ─── Módulo 2.5: Financeiro ─────────────────────────────────────────────────
+
+enum StatusSessaoCaixa {
+  aberto
+  fechado
+}
+
+/// Sessão de caixa: da abertura ao fechamento (MODULO_2_5, seção 5).
+model SessaoCaixa {
+  id                   Int               @id @default(autoincrement())
+  numero               String            @unique @db.VarChar(30) // CX-20261115-000001
+  caixa                String            @db.VarChar(10) // "01", "02"... (Configurações › Financeiro › número de caixas)
+  operadorId           Int               @map("operador_id")
+  status               StatusSessaoCaixa @default(aberto)
+  saldoInicial         Decimal           @map("saldo_inicial") @db.Decimal(12, 2)
+  abertoEm             DateTime          @default(now()) @map("data_abertura")
+  observacaoAbertura   String?           @map("observacao_abertura") @db.VarChar(300)
+  // Fechamento
+  fechadoEm            DateTime?         @map("data_fechamento")
+  fechadoPorId         Int?              @map("fechado_por")
+  saldoEsperado        Decimal?          @map("saldo_esperado") @db.Decimal(12, 2) // dinheiro que deveria estar na gaveta
+  saldoReal            Decimal?          @map("saldo_real") @db.Decimal(12, 2) // contado no fechamento
+  diferenca            Decimal?          @db.Decimal(12, 2)
+  motivoDiferenca      String?           @map("motivo_diferenca") @db.VarChar(100)
+  observacaoFechamento String?           @map("observacao_fechamento") @db.VarChar(300)
+
+  operador   Usuario          @relation("SessaoOperador", fields: [operadorId], references: [id])
+  fechadoPor Usuario?         @relation("SessaoFechadaPor", fields: [fechadoPorId], references: [id])
+  vendas     Venda[]
+  movimentos MovimentoCaixa[]
+  despesas   Despesa[]
+
+  // Índices únicos parciais (um caixa aberto por número e por operador) na migration.
+  @@index([status])
+  @@index([abertoEm])
+  @@map("sessoes_caixa")
+}
+
+enum TipoMovimentoCaixa {
+  suprimento // dinheiro colocado na gaveta
+  sangria // dinheiro retirado da gaveta (ex.: levado ao cofre)
+}
+
+model MovimentoCaixa {
+  id        Int                @id @default(autoincrement())
+  sessaoId  Int                @map("sessao_id")
+  tipo      TipoMovimentoCaixa
+  valor     Decimal            @db.Decimal(12, 2) // sempre positivo; o tipo define o sinal
+  motivo    String             @db.VarChar(300)
+  usuarioId Int                @map("usuario_id")
+  criadoEm  DateTime           @default(now()) @map("data_hora")
+
+  sessao  SessaoCaixa @relation(fields: [sessaoId], references: [id])
+  usuario Usuario     @relation(fields: [usuarioId], references: [id])
+
+  @@index([sessaoId])
+  @@map("movimentos_caixa")
+}
+
+enum TipoDespesa {
+  fixa
+  variavel
+}
+
+enum FormaPagamentoDespesa {
+  dinheiro
+  debito
+  credito
+  pix
+  boleto
+  transferencia
+}
+
+model Despesa {
+  id             Int                    @id @default(autoincrement())
+  numero         String                 @unique @db.VarChar(30) // DESP-20261115-000001
+  categoria      String                 @db.VarChar(60) // chave padrão (cmv, pessoal...) ou nome de categoria personalizada
+  descricao      String                 @db.VarChar(300)
+  valor          Decimal                @db.Decimal(12, 2)
+  dataDespesa    DateTime               @map("data_despesa") @db.Date
+  tipo           TipoDespesa            @default(variavel)
+  recorrente     String?                @db.VarChar(10) // mensal | semanal (informativo)
+  fornecedorId   Int?                   @map("fornecedor_id")
+  numeroNf       String?                @map("numero_nf") @db.VarChar(50)
+  // Paga na hora: forma e (se dinheiro do caixa) a sessão de onde saiu. A prazo: gera contas a pagar.
+  pagaNaHora     Boolean                @default(true) @map("paga_na_hora")
+  formaPagamento FormaPagamentoDespesa? @map("forma_pagamento")
+  sessaoCaixaId  Int?                   @map("sessao_caixa_id")
+  observacoes    String?                @db.VarChar(500)
+  criadoPorId    Int                    @map("criado_por")
+  criadoEm       DateTime               @default(now()) @map("data_criacao")
+  cancelada      Boolean                @default(false)
+
+  fornecedor  Fornecedor?  @relation(fields: [fornecedorId], references: [id])
+  sessaoCaixa SessaoCaixa? @relation(fields: [sessaoCaixaId], references: [id])
+  criadoPor   Usuario      @relation(fields: [criadoPorId], references: [id])
+  contas      ContaPagar[]
+
+  @@index([dataDespesa])
+  @@index([categoria])
+  @@map("despesas")
+}
+
+enum StatusContaPagar {
+  pendente
+  parcial
+  paga
+  cancelada
+}
+
+model ContaPagar {
+  id            Int              @id @default(autoincrement())
+  numero        String           @unique @db.VarChar(30) // CONTA-20261115-000001
+  despesaId     Int?             @map("despesa_id")
+  fornecedorId  Int?             @map("fornecedor_id")
+  descricao     String           @db.VarChar(300)
+  categoria     String           @db.VarChar(60)
+  valorTotal    Decimal          @map("valor_total") @db.Decimal(12, 2)
+  valorPago     Decimal          @default(0) @map("valor_pago") @db.Decimal(12, 2)
+  vencimento    DateTime         @map("data_vencimento") @db.Date
+  status        StatusContaPagar @default(pendente)
+  parcela       Int              @default(1) @map("parcela_numero")
+  totalParcelas Int              @default(1) @map("total_parcelas")
+  observacoes   String?          @db.VarChar(500)
+  criadoPorId   Int              @map("criado_por")
+  criadoEm      DateTime         @default(now()) @map("data_criacao")
+
+  despesa    Despesa?         @relation(fields: [despesaId], references: [id])
+  fornecedor Fornecedor?      @relation(fields: [fornecedorId], references: [id])
+  criadoPor  Usuario          @relation(fields: [criadoPorId], references: [id])
+  pagamentos PagamentoConta[]
+
+  @@index([status, vencimento])
+  @@map("contas_pagar")
+}
+
+model PagamentoConta {
+  id              Int                   @id @default(autoincrement())
+  contaId         Int                   @map("conta_id")
+  valor           Decimal               @db.Decimal(12, 2)
+  dataPagamento   DateTime              @map("data_pagamento") @db.Date
+  forma           FormaPagamentoDespesa @map("forma_pagamento")
+  numeroTransacao String?               @map("numero_transacao") @db.VarChar(100)
+  observacoes     String?               @db.VarChar(300)
+  usuarioId       Int                   @map("usuario_id")
+  criadoEm        DateTime              @default(now()) @map("data_criacao")
+
+  conta   ContaPagar @relation(fields: [contaId], references: [id])
+  usuario Usuario    @relation(fields: [usuarioId], references: [id])
+
+  @@index([contaId])
+  @@index([dataPagamento])
+  @@map("pagamentos_conta")
 }

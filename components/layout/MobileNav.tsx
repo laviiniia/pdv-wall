@@ -26,7 +26,7 @@ export function MobileNav({ usuario, hrefsPermitidos, nomeEmpresa }: NavegacaoPr
 
   return (
     <Dialog.Root open={aberto} onOpenChange={setAberto}>
-      <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-sidebar px-4 text-sidebar-foreground md:hidden">
+      <header className="sticky top-0 z-40 flex print:hidden h-14 items-center gap-2 border-b bg-sidebar px-4 text-sidebar-foreground md:hidden">
         <Dialog.Trigger
           aria-label="Abrir menu"
           className="-ml-2 rounded-md p-2 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"

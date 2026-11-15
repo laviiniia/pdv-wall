@@ -35,6 +35,10 @@ export const PERMISSOES_PADRAO: Record<RoleNome, { descricao: string; permissoes
       "estoque.ajustar",
       "financeiro.ver",
       "financeiro.criar_despesa",
+      "financeiro.pagar_contas",
+      "caixa.abrir_fechar",
+      "caixa.fechar_com_diferenca",
+      "caixa.gerenciar",
       "relatorios.ver",
       "configuracoes.editar_operacional",
     ],
@@ -86,6 +90,16 @@ export const PERMISSAO = {
   ESTOQUE_AJUSTAR: "estoque.ajustar",
   /** Desfazer movimentos (doc: só admin). */
   ESTOQUE_DESFAZER: "estoque.desfazer",
+  // Financeiro e caixa (MODULO_2_5)
+  FINANCEIRO_VER: "financeiro.ver",
+  FINANCEIRO_DESPESAS: "financeiro.criar_despesa",
+  FINANCEIRO_PAGAR: "financeiro.pagar_contas",
+  CAIXA_OPERAR: "caixa.abrir_fechar",
+  /** Fechar caixa com diferença quando Configurações › Financeiro exige gerente. */
+  CAIXA_FECHAR_DIFERENCA: "caixa.fechar_com_diferenca",
+  /** Ver e fechar o caixa de outros operadores. */
+  CAIXA_GERENCIAR: "caixa.gerenciar",
+  RELATORIOS_VER: "relatorios.ver",
 } as const;
 
 export function temPermissao(permissoes: string[], requerida: string): boolean {
