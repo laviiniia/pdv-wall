@@ -45,6 +45,10 @@ export const produtoSchema = z
       .min(3, "Mínimo 3 caracteres")
       .max(20, "Máximo 20 caracteres")
       .regex(/^[A-Z0-9]+-[0-9]+$/, "Use o formato TIPO-NÚMERO, ex.: HAM-001"),
+    codigoBarras: z.preprocess(
+      (v) => (typeof v === "string" ? v.replace(/\s/g, "") || undefined : v),
+      z.string().regex(/^\d{8,14}$/, "Use de 8 a 14 dígitos (EAN-8, EAN-13 ou GTIN-14)").optional(),
+    ),
     categoriaId: z.coerce.number("Selecione a categoria").int().positive("Selecione a categoria"),
     ativo: z.preprocess((v) => v === "true" || v === "on" || v === true, z.boolean()),
     precoCusto: dinheiro("preço de custo"),

@@ -123,13 +123,17 @@ const hojeISO = () => {
 async function validarUnicidadeECategoria(dados: ProdutoInput, ignorarId?: number): Promise<Campos | null> {
   const campos: Campos = {};
   const outro = { ...(ignorarId && { id: { not: ignorarId } }) };
-  const [mesmoNome, mesmoSku, categoria] = await Promise.all([
+  const [mesmoNome, mesmoSku, mesmoCodigo, categoria] = await Promise.all([
     prisma.produto.findFirst({ where: { ...outro, nome: { equals: dados.nome, mode: "insensitive" } }, select: { id: true } }),
     prisma.produto.findFirst({ where: { ...outro, sku: dados.sku }, select: { id: true } }),
+    dados.codigoBarras
+      ? prisma.produto.findFirst({ where: { ...outro, codigoBarras: dados.codigoBarras }, select: { nome: true } })
+      : null,
     prisma.categoria.findUnique({ where: { id: dados.categoriaId }, select: { id: true } }),
   ]);
   if (mesmoNome) campos.nome = ["Já existe um produto com este nome"];
   if (mesmoSku) campos.sku = ["Já existe um produto com este SKU"];
+  if (mesmoCodigo) campos.codigoBarras = [`Código já usado por "${mesmoCodigo.nome}"`];
   if (!categoria) campos.categoriaId = ["Categoria não encontrada"];
   return Object.keys(campos).length ? campos : null;
 }
@@ -138,6 +142,9 @@ async function validarUnicidadeECategoria(dados: ProdutoInput, ignorarId?: numbe
 function traduzirErroBanco(e: unknown): ResultadoProduto | null {
   if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
     const alvo = JSON.stringify(e.meta ?? {});
+    if (alvo.includes("codigo_barras") || alvo.includes("codigoBarras")) {
+      return { ok: false, campos: { codigoBarras: ["Código de barras já usado por outro produto"] } };
+    }
     return { ok: false, campos: alvo.includes("sku") ? { sku: ["Já existe um produto com este SKU"] } : { nome: ["Já existe um produto com este nome"] } };
   }
   if (e instanceof Error && /produtos_preco_(venda_maior|custo_positivo)/.test(e.message)) {
@@ -151,6 +158,7 @@ function dadosProduto(d: ProdutoInput) {
     nome: d.nome,
     descricao: d.descricao ?? null,
     sku: d.sku,
+    codigoBarras: d.codigoBarras ?? null,
     categoriaId: d.categoriaId,
     status: d.ativo ? ("ativo" as const) : ("inativo" as const),
     precoCusto: new Prisma.Decimal(d.precoCusto.toFixed(2)),
@@ -206,6 +214,7 @@ export async function editarProduto(
     nome: p.nome,
     descricao: p.descricao ?? null,
     sku: p.sku,
+    codigo_barras: p.codigoBarras ?? null,
     categoria_id: p.categoriaId,
     status: p.status,
     preco_custo: Number(p.precoCusto).toFixed(2),

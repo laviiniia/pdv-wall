@@ -54,18 +54,20 @@ async function main() {
   );
 
   const produtos = [
-    { sku: "LAN-001", nome: "X-Burguer", categoria: "Lanches", custo: 9.5, venda: 22.9, un: "un" },
-    { sku: "LAN-002", nome: "X-Salada", categoria: "Lanches", custo: 10.5, venda: 24.9, un: "un" },
-    { sku: "BEB-001", nome: "Refrigerante Lata", categoria: "Bebidas", custo: 2.8, venda: 6.5, un: "un" },
-    { sku: "BEB-002", nome: "Suco Natural 500ml", categoria: "Bebidas", custo: 3.2, venda: 9.9, un: "un" },
-    { sku: "SOB-001", nome: "Pudim", categoria: "Sobremesas", custo: 3.0, venda: 11.0, un: "un" },
+    { sku: "LAN-001", nome: "X-Burguer", categoria: "Lanches", custo: 9.5, venda: 22.9, un: "un", ean: null },
+    { sku: "LAN-002", nome: "X-Salada", categoria: "Lanches", custo: 10.5, venda: 24.9, un: "un", ean: null },
+    { sku: "BEB-001", nome: "Refrigerante Lata", categoria: "Bebidas", custo: 2.8, venda: 6.5, un: "un", ean: "7894900011517" },
+    { sku: "BEB-002", nome: "Suco Natural 500ml", categoria: "Bebidas", custo: 3.2, venda: 9.9, un: "un", ean: null },
+    { sku: "SOB-001", nome: "Pudim", categoria: "Sobremesas", custo: 3.0, venda: 11.0, un: "un", ean: null },
   ] as const;
 
   for (const p of produtos) {
     await prisma.produto.upsert({
       where: { sku: p.sku },
-      update: {},
+      // só preenche o código de barras de exemplo se ainda não houver um
+      update: p.ean ? { codigoBarras: p.ean } : {},
       create: {
+        codigoBarras: p.ean,
         sku: p.sku,
         nome: p.nome,
         categoriaId: cat[p.categoria],
@@ -77,6 +79,23 @@ async function main() {
       },
     });
   }
+
+  // Cupom de exemplo para testar o PDV (válido por 1 ano a partir do seed).
+  const agora = new Date();
+  await prisma.cupomPromocional.upsert({
+    where: { codigo: "PROMO10" },
+    update: {},
+    create: {
+      codigo: "PROMO10",
+      descricao: "10% de desconto (exemplo)",
+      tipo: "percentual",
+      valor: 10,
+      valorMinimo: 20,
+      inicio: agora,
+      expiracao: new Date(agora.getTime() + 365 * 86_400_000),
+      criadoPorId: admin.id,
+    },
+  });
 
   console.log(`Seed concluído. Login de desenvolvimento: ${email}`);
 }

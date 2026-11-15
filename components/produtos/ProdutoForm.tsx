@@ -11,6 +11,7 @@ export type ProdutoEditavel = {
   nome: string;
   descricao: string | null;
   sku: string;
+  codigoBarras: string | null;
   categoriaId: number;
   status: "ativo" | "inativo";
   precoCusto: { toString(): string };
@@ -62,6 +63,14 @@ export function ProdutoForm({
           ajuda="Formato TIPO-NÚMERO"
           className="uppercase"
           required
+        />
+        <CampoTexto
+          nome="codigoBarras"
+          rotulo="Código de barras (opcional)"
+          valor={produto?.codigoBarras ?? ""}
+          inputMode="numeric"
+          maxLength={14}
+          ajuda="EAN-8 ou EAN-13; usado pelo leitor no PDV"
         />
         <CampoSelect nome="categoriaId" rotulo="Categoria" valor={produto ? String(produto.categoriaId) : ""} opcoes={opcoesCategoria} />
         <CampoTextoLongo nome="descricao" rotulo="Descrição" valor={produto?.descricao ?? ""} max={500} />

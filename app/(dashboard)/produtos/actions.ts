@@ -24,6 +24,7 @@ function lerProduto(fd: FormData) {
     nome: fd.get("nome"),
     descricao: fd.get("descricao"),
     sku: fd.get("sku"),
+    codigoBarras: fd.get("codigoBarras"),
     categoriaId: fd.get("categoriaId"),
     ativo: fd.get("ativo"),
     precoCusto: fd.get("precoCusto"),

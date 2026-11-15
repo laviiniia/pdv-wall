@@ -97,4 +97,6 @@ Convenções que vamos seguir conforme os módulos forem implementados (ver `doc
 - [ ] Módulo 4 (parte 2): notificações, interface, backups/logs, integrações e upload de logo
 - [x] Módulo 2.1: produtos e categorias em `/produtos` (cadastro, edição, desativar/reativar, margem ao vivo, busca/filtros/ordenação/paginação, alertas de margem e validade, histórico de alterações)
 - [ ] Módulo 2.1 (pendente): upload de imagem (depende do Supabase Storage), status de estoque (Módulo 2.4) e exclusão definitiva (precisa das vendas do Módulo 2.2)
-- [ ] Módulos 2.2 a 2.6
+- [x] Módulo 2.2: PDV em `/vendas` (busca por nome/SKU/código de barras, carrinho, desconto por perfil e cupons, pagamento em dinheiro/débito/crédito/PIX/combinado, cupom para impressão, vendas do dia, cancelamento) e cupons em `/vendas/cupons`
+- [ ] Módulo 2.2 (pendente): integração com maquininha e PIX dinâmico, rascunhos de venda no banco, aprovação de desconto por gerente na hora, baixa de estoque (2.4) e caixa (2.5)
+- [ ] Módulos 2.3 a 2.6

@@ -17,6 +17,7 @@ const ROTULOS_CAMPO: Record<string, string> = {
   nome: "Nome",
   descricao: "Descrição",
   sku: "SKU",
+  codigo_barras: "Código de barras",
   categoria_id: "Categoria",
   status: "Status",
   preco_custo: "Preço de custo",

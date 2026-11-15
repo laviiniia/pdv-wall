@@ -18,7 +18,7 @@ model Role {
   id         Int       @id @default(autoincrement())
   nome       String    @unique @db.VarChar(50) // admin, gerente, operador
   descricao  String?
-  permissoes Json      // ex.: ["*"] ou ["vendas.criar", "produtos.ler"]
+  permissoes Json // ex.: ["*"] ou ["vendas.criar", "produtos.ler"]
   ativo      Boolean   @default(true)
   criadoEm   DateTime  @default(now()) @map("data_criacao")
   usuarios   Usuario[]
@@ -54,6 +54,9 @@ model Usuario {
   produtosCriados    Produto[]            @relation("ProdutoCriadoPor")
   produtosEditados   Produto[]            @relation("ProdutoEditadoPor")
   configuracoes      Configuracao[]
+  vendas             Venda[]              @relation("VendaOperador")
+  vendasCanceladas   Venda[]              @relation("VendaCanceladaPor")
+  cuponsCriados      CupomPromocional[]
 
   @@index([roleId])
   @@index([ativo])
@@ -85,13 +88,13 @@ model Auditoria {
 }
 
 model ResetPasswordToken {
-  id         Int       @id @default(autoincrement())
-  usuarioId  Int       @map("usuario_id")
-  tokenHash  String    @map("token_hash") @db.VarChar(255) // nunca guardar o token puro
-  usado      Boolean   @default(false)
-  criadoEm   DateTime  @default(now()) @map("data_criacao")
-  expiraEm   DateTime  @map("data_expiracao")
-  usadoEm    DateTime? @map("data_uso")
+  id        Int       @id @default(autoincrement())
+  usuarioId Int       @map("usuario_id")
+  tokenHash String    @map("token_hash") @db.VarChar(255) // nunca guardar o token puro
+  usado     Boolean   @default(false)
+  criadoEm  DateTime  @default(now()) @map("data_criacao")
+  expiraEm  DateTime  @map("data_expiracao")
+  usadoEm   DateTime? @map("data_uso")
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
@@ -119,16 +122,16 @@ model Configuracao {
 // ─── Módulo 2.1: Gestão de Produtos ─────────────────────────────────────────
 
 model Categoria {
-  id          Int       @id @default(autoincrement())
-  nome        String    @unique @db.VarChar(50)
-  descricao   String?
-  corHex      String    @default("#808080") @map("cor_hex") @db.VarChar(7)
-  icone       String?   @db.VarChar(100)
-  ativa        Boolean   @default(true)
-  criadoPorId  Int       @map("criado_por")
-  editadoPorId Int?      @map("editado_por")
-  criadoEm     DateTime  @default(now()) @map("data_criacao")
-  editadoEm    DateTime  @updatedAt @map("data_edicao")
+  id           Int      @id @default(autoincrement())
+  nome         String   @unique @db.VarChar(50)
+  descricao    String?
+  corHex       String   @default("#808080") @map("cor_hex") @db.VarChar(7)
+  icone        String?  @db.VarChar(100)
+  ativa        Boolean  @default(true)
+  criadoPorId  Int      @map("criado_por")
+  editadoPorId Int?     @map("editado_por")
+  criadoEm     DateTime @default(now()) @map("data_criacao")
+  editadoEm    DateTime @updatedAt @map("data_edicao")
 
   criadoPor  Usuario   @relation("CategoriaCriadaPor", fields: [criadoPorId], references: [id])
   editadoPor Usuario?  @relation("CategoriaEditadaPor", fields: [editadoPorId], references: [id])
@@ -155,6 +158,7 @@ model Produto {
   nome             String        @db.VarChar(100)
   descricao        String?
   sku              String        @unique @db.VarChar(20)
+  codigoBarras     String?       @unique @map("codigo_barras") @db.VarChar(14) // EAN-8/13, GTIN-14
   categoriaId      Int           @map("categoria_id")
   imagemPath       String?       @map("imagem_path") @db.VarChar(255)
   status           StatusProduto @default(ativo)
@@ -169,13 +173,126 @@ model Produto {
   criadoEm         DateTime      @default(now()) @map("data_cadastro")
   editadoEm        DateTime      @updatedAt @map("data_edicao")
 
-  categoria  Categoria @relation(fields: [categoriaId], references: [id])
-  criadoPor  Usuario   @relation("ProdutoCriadoPor", fields: [criadoPorId], references: [id])
-  editadoPor Usuario?  @relation("ProdutoEditadoPor", fields: [editadoPorId], references: [id])
+  categoria  Categoria   @relation(fields: [categoriaId], references: [id])
+  criadoPor  Usuario     @relation("ProdutoCriadoPor", fields: [criadoPorId], references: [id])
+  editadoPor Usuario?    @relation("ProdutoEditadoPor", fields: [editadoPorId], references: [id])
+  itensVenda ItemVenda[]
 
   // Restrições CHECK (preço de custo > 0 e venda > custo) ficam na migration
   // 20261115*_produtos_regras: o Prisma não as expressa no schema.
   @@index([categoriaId])
   @@index([status])
   @@map("produtos")
+}
+
+// ─── Módulo 2.2: Vendas (PDV) ───────────────────────────────────────────────
+
+enum StatusVenda {
+  finalizada
+  cancelada
+}
+
+enum TipoDesconto {
+  percentual
+  valor
+  cupom
+}
+
+enum FormaPagamento {
+  dinheiro
+  debito
+  credito
+  pix
+  voucher
+}
+
+model Venda {
+  id                 Int           @id @default(autoincrement())
+  numero             String        @unique @db.VarChar(30) // VEND-20261115-000123
+  operadorId         Int           @map("operador_id")
+  caixa              String?       @db.VarChar(10) // preenchido quando existir o controle de caixa (Módulo 2.5)
+  subtotal           Decimal       @db.Decimal(10, 2) // soma dos itens, sem desconto
+  descontoTipo       TipoDesconto? @map("desconto_tipo")
+  descontoPercentual Decimal?      @map("desconto_percentual") @db.Decimal(5, 2)
+  descontoValor      Decimal       @default(0) @map("desconto_valor") @db.Decimal(10, 2)
+  cupomId            Int?          @map("cupom_id")
+  total              Decimal       @db.Decimal(10, 2) // subtotal − desconto
+  troco              Decimal       @default(0) @db.Decimal(10, 2)
+  status             StatusVenda   @default(finalizada)
+  canceladoEm        DateTime?     @map("cancelado_em")
+  canceladoPorId     Int?          @map("cancelado_por")
+  motivoCancelamento String?       @map("motivo_cancelamento")
+  criadoEm           DateTime      @default(now()) @map("data_hora")
+
+  operador     Usuario           @relation("VendaOperador", fields: [operadorId], references: [id])
+  canceladoPor Usuario?          @relation("VendaCanceladaPor", fields: [canceladoPorId], references: [id])
+  cupom        CupomPromocional? @relation(fields: [cupomId], references: [id])
+  itens        ItemVenda[]
+  pagamentos   Pagamento[]
+
+  // CHECKs (total ≥ 0, desconto ≤ subtotal) na migration *_vendas.
+  @@index([criadoEm])
+  @@index([operadorId])
+  @@index([status])
+  @@map("vendas")
+}
+
+model ItemVenda {
+  id                 Int           @id @default(autoincrement())
+  vendaId            Int           @map("venda_id")
+  produtoId          Int           @map("produto_id")
+  // Fotografia do produto no momento da venda (preço e nome podem mudar depois).
+  nomeProduto        String        @map("nome_produto") @db.VarChar(100)
+  sku                String        @db.VarChar(20)
+  unidadeMedida      UnidadeMedida @map("unidade_medida")
+  quantidade         Decimal       @db.Decimal(10, 3) // fracionada para kg/L
+  precoUnitario      Decimal       @map("preco_unitario") @db.Decimal(10, 2)
+  precoCustoUnitario Decimal       @map("preco_custo_unitario") @db.Decimal(10, 2)
+  subtotal           Decimal       @db.Decimal(10, 2)
+
+  venda   Venda   @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  produto Produto @relation(fields: [produtoId], references: [id])
+
+  @@index([vendaId])
+  @@index([produtoId])
+  @@map("itens_venda")
+}
+
+model Pagamento {
+  id              Int            @id @default(autoincrement())
+  vendaId         Int            @map("venda_id")
+  forma           FormaPagamento @map("forma_pagamento")
+  valor           Decimal        @db.Decimal(10, 2) // parte do total paga nesta forma
+  parcelas        Int            @default(1) // crédito
+  valorRecebido   Decimal?       @map("valor_recebido") @db.Decimal(10, 2) // dinheiro
+  troco           Decimal?       @db.Decimal(10, 2) // dinheiro
+  numeroTransacao String?        @map("numero_transacao") @db.VarChar(100) // NSU/autorização da maquininha ou id do PIX
+  criadoEm        DateTime       @default(now()) @map("data_processamento")
+
+  venda Venda @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+
+  @@index([vendaId])
+  @@map("pagamentos")
+}
+
+model CupomPromocional {
+  id          Int          @id @default(autoincrement())
+  codigo      String       @unique @db.VarChar(50) // sempre em maiúsculas
+  descricao   String?
+  tipo        TipoDesconto // percentual ou valor
+  valor       Decimal      @db.Decimal(10, 2)
+  valorMinimo Decimal      @default(0) @map("valor_minimo") @db.Decimal(10, 2)
+  usosMaximos Int?         @map("usos_maximos") // null = ilimitado
+  usosAtuais  Int          @default(0) @map("usos_atuais")
+  inicio      DateTime     @map("data_inicio")
+  expiracao   DateTime     @map("data_expiracao")
+  ativo       Boolean      @default(true)
+  criadoPorId Int?         @map("criado_por")
+  criadoEm    DateTime     @default(now()) @map("data_criacao")
+
+  criadoPor Usuario? @relation(fields: [criadoPorId], references: [id])
+  vendas    Venda[]
+
+  @@index([expiracao])
+  @@map("cupons_promocionais")
 }

@@ -24,6 +24,7 @@ export const PERMISSOES_PADRAO: Record<RoleNome, { descricao: string; permissoes
       "vendas.ver",
       "vendas.cancelar",
       "vendas.desconto_livre",
+      "cupons.gerenciar",
       "pedidos.ver",
       "pedidos.criar",
       "pedidos.mudar_status",
@@ -62,6 +63,15 @@ export const PERMISSAO = {
   CONFIG_EDITAR_OPERACIONAL: "configuracoes.editar_operacional",
   /** Criar, editar, desativar e reativar produtos e categorias (MODULO_2_1: admin e gerente). */
   PRODUTOS_GERENCIAR: "produtos.gerenciar",
+  // Vendas (MODULO_2_2 e matriz do MODULO_3)
+  VENDAS_CRIAR: "vendas.criar",
+  /** Ver todas as vendas (gerente). */
+  VENDAS_VER: "vendas.ver",
+  /** Ver só as próprias vendas (operador). */
+  VENDAS_VER_PROPRIAS: "vendas.ver_proprias",
+  VENDAS_CANCELAR: "vendas.cancelar",
+  VENDAS_CANCELAR_PROPRIAS: "vendas.cancelar_proprias",
+  CUPONS_GERENCIAR: "cupons.gerenciar",
 } as const;
 
 export function temPermissao(permissoes: string[], requerida: string): boolean {

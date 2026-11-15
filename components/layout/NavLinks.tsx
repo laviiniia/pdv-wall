@@ -84,7 +84,17 @@ export function RodapeUsuario({ usuario, onNavegar }: { usuario: UsuarioNavegaca
         <p className="truncate text-xs capitalize text-muted-foreground">{usuario.role}</p>
         <span className="sr-only">Alterar minha senha</span>
       </Link>
-      <form action={logout}>
+      <form
+        action={logout}
+        onSubmit={() => {
+          // O carrinho do PDV fica no navegador: não deixa para o próximo operador.
+          try {
+            localStorage.removeItem("pdv-wall:carrinho");
+          } catch {
+            /* armazenamento indisponível */
+          }
+        }}
+      >
         <button
           type="submit"
           title="Sair"
