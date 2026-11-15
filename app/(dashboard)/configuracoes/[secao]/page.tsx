@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ConfigForm } from "@/components/configuracoes/ConfigForm";
+import { TesteEmail } from "@/components/configuracoes/TesteEmail";
 import { SecaoEmpresa, SecaoEstoque, SecaoFinanceiro, SecaoVendas } from "@/components/configuracoes/secoes";
 import { getUsuarioAtual } from "@/lib/auth/dal";
+import { PERMISSAO, temPermissao } from "@/lib/constants/roles";
 import { getConfig, getMetaConfig, podeEditarSecao } from "@/lib/services/configuracoes.service";
+import { situacaoEmail } from "@/lib/services/email.service";
 import { ehSecao, SECOES } from "@/lib/validations/configuracoes.schema";
 
 export async function generateMetadata({ params }: PageProps<"/configuracoes/[secao]">): Promise<Metadata> {
@@ -35,6 +38,7 @@ export default async function SecaoConfigPage({ params }: PageProps<"/configurac
       <ConfigForm key={secao} secao={secao} podeEditar={podeEditarSecao(usuario.permissoes, secao)}>
         {conteudo}
       </ConfigForm>
+      {secao === "empresa" && temPermissao(usuario.permissoes, PERMISSAO.CONFIG_EDITAR) && <TesteEmail situacao={situacaoEmail()} />}
     </>
   );
 }

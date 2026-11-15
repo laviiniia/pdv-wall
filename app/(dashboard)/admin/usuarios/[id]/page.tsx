@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { EnviarLinkSenha } from "@/components/admin/EnviarLinkSenha";
+import { SenhaTemporaria } from "@/components/admin/SenhaTemporaria";
 import { UsuarioForm } from "@/components/admin/UsuarioForm";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { exigirPermissao } from "@/lib/auth/dal";
@@ -11,9 +12,9 @@ export const metadata: Metadata = { title: "Editar usuário" };
 
 const dataHora = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
 
-export default async function EditarUsuarioPage({ params }: PageProps<"/admin/usuarios/[id]">) {
+export default async function EditarUsuarioPage({ params, searchParams }: PageProps<"/admin/usuarios/[id]">) {
   const autor = await exigirPermissao(PERMISSAO.USUARIOS_GERENCIAR);
-  const { id } = await params;
+  const [{ id }, { msg }] = await Promise.all([params, searchParams]);
   const usuarioId = Number(id);
   if (!Number.isInteger(usuarioId) || usuarioId <= 0) notFound();
 
@@ -29,6 +30,12 @@ export default async function EditarUsuarioPage({ params }: PageProps<"/admin/us
           `Último acesso: ${usuario.ultimoLogin ? dataHora.format(usuario.ultimoLogin) : "nunca"}`,
         ].join(" · ")}
       />
+
+      {msg === "convite-falhou" && (
+        <p role="alert" className="mb-4 max-w-xl rounded-md bg-amber-500/10 px-3 py-2 text-sm">
+          Usuário criado, mas o e-mail de convite não foi enviado (veja Auditoria › E-mail). Reenvie o link abaixo ou gere uma senha temporária.
+        </p>
+      )}
 
       {usuario.id === autor.id && (
         <p className="mb-4 max-w-xl rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
@@ -54,6 +61,10 @@ export default async function EditarUsuarioPage({ params }: PageProps<"/admin/us
           Envia ao usuário um e-mail com link para ele definir uma nova senha (válido por 1 hora).
         </p>
         <EnviarLinkSenha usuarioId={usuario.id} />
+        <p className="mt-5 mb-3 text-sm text-muted-foreground">
+          Sem e-mail? Gere uma senha temporária para passar pessoalmente (também desbloqueia a conta).
+        </p>
+        <SenhaTemporaria usuarioId={usuario.id} nome={usuario.nome} />
       </section>
     </>
   );

@@ -199,6 +199,7 @@ export async function editarProduto(
   dados: ProdutoInput,
   autor: Autor,
   ctx: ContextoRequisicao,
+  opcoes: { podeEditarPreco?: boolean } = {},
 ): Promise<ResultadoProduto & { alterados?: number }> {
   const atual = await prisma.produto.findUnique({ where: { id } });
   if (!atual) return { ok: false, erro: "Produto não encontrado." };
@@ -213,6 +214,12 @@ export async function editarProduto(
   }
 
   const novo = dadosProduto(dados);
+  const precoMudou =
+    Number(novo.precoCusto).toFixed(2) !== Number(atual.precoCusto).toFixed(2) ||
+    Number(novo.precoVenda).toFixed(2) !== Number(atual.precoVenda).toFixed(2);
+  if (precoMudou && opcoes.podeEditarPreco === false) {
+    return { ok: false, erro: "Você não tem permissão para alterar preços.", campos: { precoVenda: ["Sem permissão para alterar preço"] } };
+  }
   const comparavel = (p: typeof novo | typeof atual) => ({
     nome: p.nome,
     descricao: p.descricao ?? null,

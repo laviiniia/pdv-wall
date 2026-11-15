@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { EstadoForm } from "@/components/form/Formulario";
 import { contextoRequisicao } from "@/lib/auth/contexto";
 import { exigirPermissao } from "@/lib/auth/dal";
-import { PERMISSAO } from "@/lib/constants/roles";
+import { PERMISSAO, temPermissao } from "@/lib/constants/roles";
 import {
   alterarStatusProduto,
   criarCategoria,
@@ -56,7 +56,7 @@ export async function salvarProduto(_prev: EstadoForm, fd: FormData): Promise<Es
     redirect(`/produtos?msg=criado&destaque=${r.id}`);
   }
 
-  const r = await editarProduto(id, parsed.data, autor, ctx);
+  const r = await editarProduto(id, parsed.data, autor, ctx, { podeEditarPreco: temPermissao(autor.permissoes, PERMISSAO.PRODUTOS_EDITAR_PRECO) });
   if (!r.ok) return { erro: r.erro ?? ERRO_CAMPOS, campos: r.campos };
   revalidatePath("/produtos");
   revalidatePath(`/produtos/${id}`);

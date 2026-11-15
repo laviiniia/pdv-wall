@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { exigirPermissao } from "@/lib/auth/dal";
+import { PERMISSAO } from "@/lib/constants/roles";
 import Link from "next/link";
 import { CabecalhoRelatorio } from "@/components/relatorios/Cabecalho";
 import { brl, Cartao, diaCurto, pct, Secao, Variacao } from "@/components/relatorios/comum";
@@ -9,6 +11,7 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = { title: "Relatórios" };
 
 export default async function VisaoGeralPage({ searchParams }: PageProps<"/relatorios">) {
+  await exigirPermissao(PERMISSAO.RELATORIOS_VER);
   const filtro = await lerFiltro(await searchParams);
   const a = await analisar(filtro.atual);
   const b = filtro.comparado ? await analisar(filtro.comparado) : null;

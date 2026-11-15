@@ -15,11 +15,14 @@ export function CamposPreco({
   custo,
   venda,
   margemMinimaPct,
+  bloqueado = false,
 }: {
   custo: string;
   venda: string;
   /** Configurações > Financeiro: abaixo disso, mostra alerta. */
   margemMinimaPct: number;
+  /** Somente leitura (sem permissão para alterar preço). */
+  bloqueado?: boolean;
 }) {
   const { erros } = useFormCtx();
   const [precoCusto, setPrecoCusto] = useState(custo);
@@ -42,7 +45,9 @@ export function CamposPreco({
           onChange={(e) => set(e.target.value)}
           placeholder="0,00"
           aria-invalid={!!erros[nome]}
-          className={inputBase}
+          readOnly={bloqueado}
+          title={bloqueado ? "Sem permissão para alterar preço" : undefined}
+          className={cn(inputBase, bloqueado && "bg-muted/50 text-muted-foreground")}
         />
       </span>
       {erros[nome] && <span className="text-xs font-normal text-destructive">{erros[nome]![0]}</span>}

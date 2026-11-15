@@ -4,7 +4,7 @@ import { Package, Plus, Tags } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { BotaoStatusProduto } from "@/components/produtos/BotaoStatusProduto";
 import { Selo, SeloValidade } from "@/components/produtos/Selos";
-import { getUsuarioAtual } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { PERMISSAO, temPermissao } from "@/lib/constants/roles";
 import { getConfig } from "@/lib/services/configuracoes.service";
 import { listarCategoriasParaSelect, listarProdutos, ORDENACOES, type Ordenacao } from "@/lib/services/produtos.service";
@@ -26,7 +26,7 @@ export default async function ProdutosPage({ searchParams }: PageProps<"/produto
   const ordenar = (Object.keys(ORDENACOES) as Ordenacao[]).find((o) => o === param("ordenar")) ?? "nome";
   const pagina = Math.max(1, Number(param("pagina")) || 1);
 
-  const usuario = await getUsuarioAtual();
+  const usuario = await exigirPermissao(PERMISSAO.PRODUTOS_VER);
   const podeGerenciar = temPermissao(usuario.permissoes, PERMISSAO.PRODUTOS_GERENCIAR);
   const [resultado, categorias, financeiro, estoque] = await Promise.all([
     listarProdutos({ busca, categoriaId, status, ordenar, pagina }),

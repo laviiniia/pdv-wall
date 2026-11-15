@@ -66,7 +66,7 @@ export function buscarUsuario(id: number) {
 type Autor = { id: number; email: string };
 
 export type ResultadoCriacao =
-  | { ok: true; id: number; senhaTemporaria?: string }
+  | { ok: true; id: number; senhaTemporaria?: string; falhaEmail?: boolean }
   | { ok: false; erro: "EMAIL_EM_USO" };
 
 export async function criarUsuario(
@@ -117,7 +117,12 @@ export async function criarUsuario(
   });
 
   if (dados.modoSenha === "link" && dados.ativo) {
-    await enviarConviteConta(usuario, baseUrl);
+    try {
+      await enviarConviteConta(usuario, baseUrl);
+    } catch {
+      // A conta já existe; o admin reenvia o link ou gera senha temporária na edição do usuário.
+      return { ok: true, id: usuario.id, falhaEmail: true };
+    }
   }
 
   return { ok: true, id: usuario.id, senhaTemporaria };
@@ -223,3 +228,55 @@ function registrar(acao: string, autor: Autor, ctx: ContextoRequisicao, dados: P
   });
 }
 
+
+/**
+ * Gera uma senha temporária para outro usuário (MODULO_3: gerente pode redefinir senha).
+ * Admin (usuarios.gerenciar) faz para qualquer um; com só usuarios.redefinir_senha, apenas operadores.
+ * Derruba as sessões abertas do usuário, desbloqueia a conta e obriga a troca no próximo acesso.
+ */
+export async function redefinirComSenhaTemporaria(
+  alvoId: number,
+  autor: Autor & { permissoes: string[] },
+  ctx: ContextoRequisicao,
+): Promise<{ ok: true; nome: string; email: string; senha: string } | { ok: false; erro: string }> {
+  if (alvoId === autor.id) return { ok: false, erro: "Para trocar a sua própria senha, use \"Alterar minha senha\"." };
+  const alvo = await prisma.usuario.findUnique({ where: { id: alvoId }, include: { role: { select: { nome: true } } } });
+  if (!alvo || !alvo.ativo) return { ok: false, erro: "Usuário não encontrado ou inativo." };
+  const admin = autor.permissoes.includes("*") || autor.permissoes.includes("usuarios.gerenciar");
+  if (!admin && alvo.role.nome !== ROLES.OPERADOR) return { ok: false, erro: "Você só pode redefinir a senha de operadores." };
+
+  const senha = gerarSenhaTemporaria();
+  await prisma.usuario.update({
+    where: { id: alvo.id },
+    data: {
+      passwordHash: await bcrypt.hash(senha, 10),
+      deveTrocarSenha: true,
+      passwordAlteradaEm: new Date(),
+      bloqueado: false,
+      tentativasLoginFalhas: 0,
+    },
+  });
+  await prisma.auditoria.create({
+    data: {
+      acao: "USER_PASSWORD_RESET_TEMP",
+      modulo: "USUARIOS",
+      nivel: "WARN",
+      usuarioId: autor.id,
+      emailUsuario: autor.email,
+      dadosModificados: { usuario_id: alvo.id, email: alvo.email, desbloqueado: alvo.bloqueado },
+      ipAddress: ctx.ip ?? null,
+      userAgent: ctx.userAgent ?? null,
+    },
+  });
+  return { ok: true, nome: alvo.nome, email: alvo.email, senha };
+}
+
+/** Pessoas cuja senha o usuário pode redefinir (tela Equipe). */
+export function equipeParaRedefinir(autor: { id: number; permissoes: string[] }) {
+  const admin = autor.permissoes.includes("*") || autor.permissoes.includes("usuarios.gerenciar");
+  return prisma.usuario.findMany({
+    where: { ativo: true, id: { not: autor.id }, ...(admin ? {} : { role: { nome: ROLES.OPERADOR } }) },
+    orderBy: { nome: "asc" },
+    select: { id: true, nome: true, email: true, bloqueado: true, deveTrocarSenha: true, ultimoLogin: true, role: { select: { nome: true } } },
+  });
+}

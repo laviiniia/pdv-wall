@@ -14,7 +14,12 @@ export default async function DashboardLayout({ children }: LayoutProps<"/">) {
   if (usuario.deveTrocarSenha) redirect("/trocar-senha");
 
   const empresa = await getConfig("empresa");
-  const itens = NAVEGACAO.filter((i) => !i.permissao || temPermissao(usuario.permissoes, i.permissao)).map(
+  const itens = NAVEGACAO.filter(
+    (i) =>
+      (!i.permissao || temPermissao(usuario.permissoes, i.permissao)) &&
+      (!i.permissoes || i.permissoes.some((p) => temPermissao(usuario.permissoes, p))) &&
+      !(i.ocultarCom && temPermissao(usuario.permissoes, i.ocultarCom)),
+  ).map(
     ({ href }) => href,
   );
 

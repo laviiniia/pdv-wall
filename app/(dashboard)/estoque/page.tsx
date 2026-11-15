@@ -33,6 +33,7 @@ export default async function EstoquePage({ searchParams }: PageProps<"/estoque"
     listarCategoriasParaSelect(),
   ]);
   const pode = (p: string) => temPermissao(usuario.permissoes, p);
+  const gestao = pode(PERMISSAO.ESTOQUE_HISTORICO);
 
   return (
     <>
@@ -54,12 +55,15 @@ export default async function EstoquePage({ searchParams }: PageProps<"/estoque"
               </Link>
             </>
           )}
-          <Link href="/estoque/movimentos" className="inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm hover:bg-muted">
-            <History className="size-4" /> Movimentações
-          </Link>
+          {gestao && (
+            <Link href="/estoque/movimentos" className="inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm hover:bg-muted">
+              <History className="size-4" /> Movimentações
+            </Link>
+          )}
         </div>
       </div>
 
+      {gestao && (
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { rotulo: "Produtos controlados", valor: String(resumo.produtos), href: "/estoque" },
@@ -73,7 +77,8 @@ export default async function EstoquePage({ searchParams }: PageProps<"/estoque"
           </Link>
         ))}
       </div>
-      {!alertasAtivos && <p className="mb-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">Os alertas de estoque estão desligados em Configurações › Estoque.</p>}
+      )}
+      {gestao && !alertasAtivos && <p className="mb-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">Os alertas de estoque estão desligados em Configurações › Estoque.</p>}
 
       <form className="mb-4 flex flex-wrap items-end gap-2" role="search">
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
@@ -83,7 +88,7 @@ export default async function EstoquePage({ searchParams }: PageProps<"/estoque"
         {(
           [
             ["situacao", "Situação", SITUACOES, situacao],
-            ["ordenar", "Ordenar por", ORDENS, ordenar],
+            ["ordenar", "Ordenar por", gestao ? ORDENS : Object.fromEntries(Object.entries(ORDENS).filter(([k]) => k !== "valor")), ordenar],
           ] as const
         ).map(([nome, rotulo, opcoes, valor]) => (
           <label key={nome} className="flex flex-col gap-1 text-xs text-muted-foreground">
@@ -115,7 +120,7 @@ export default async function EstoquePage({ searchParams }: PageProps<"/estoque"
               <th className="px-4 py-3 text-right font-medium">Quantidade</th>
               <th className="px-4 py-3 text-right font-medium">Mínimo</th>
               <th className="px-4 py-3 font-medium">Situação</th>
-              <th className="px-4 py-3 text-right font-medium">Valor</th>
+              {gestao && <th className="px-4 py-3 text-right font-medium">Valor</th>}
               <th className="px-4 py-3 font-medium">Último movimento</th>
               <th className="px-4 py-3" />
             </tr>
@@ -139,13 +144,13 @@ export default async function EstoquePage({ searchParams }: PageProps<"/estoque"
                 <td className="px-4 py-3 text-right font-medium tabular-nums">{qtd(l.quantidade)} <span className="text-xs font-normal text-muted-foreground">{l.unidadeMedida}</span></td>
                 <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{l.quantidadeMinima}</td>
                 <td className="px-4 py-3"><SeloSituacao situacao={l.situacao} /></td>
-                <td className="px-4 py-3 text-right tabular-nums">{brl(l.valor)}</td>
+                {gestao && <td className="px-4 py-3 text-right tabular-nums">{brl(l.valor)}</td>}
                 <td className="px-4 py-3 text-xs text-muted-foreground">{l.ultimoMovimentoEm ? dataHora.format(l.ultimoMovimentoEm) : "—"}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex justify-end gap-3 whitespace-nowrap">
                     {pode(PERMISSAO.ESTOQUE_ENTRADA) && <Link href={`/estoque/entrada?produto=${l.id}`} className="text-primary hover:underline" title="Entrada">+ Entrada</Link>}
                     {pode(PERMISSAO.ESTOQUE_AJUSTAR) && <Link href={`/estoque/saida?produto=${l.id}`} className="text-muted-foreground hover:underline" title="Saída">− Saída</Link>}
-                    <Link href={`/estoque/movimentos?produto=${l.id}`} className="text-muted-foreground hover:underline">Histórico</Link>
+                    {gestao && <Link href={`/estoque/movimentos?produto=${l.id}`} className="text-muted-foreground hover:underline">Histórico</Link>}
                   </div>
                 </td>
               </tr>

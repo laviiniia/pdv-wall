@@ -15,7 +15,7 @@ const qtd = (v: { toString(): string }) => Number(v.toString()).toLocaleString("
 const MENSAGENS: Record<string, string> = { saida: "Movimentação registrada.", entrada: "Entrada registrada." };
 
 export default async function MovimentosPage({ searchParams }: PageProps<"/estoque/movimentos">) {
-  const usuario = await exigirPermissao(PERMISSAO.ESTOQUE_VER);
+  const usuario = await exigirPermissao(PERMISSAO.ESTOQUE_HISTORICO);
   const sp = await searchParams;
   const param = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
   const produtoId = Number(param("produto")) || undefined;

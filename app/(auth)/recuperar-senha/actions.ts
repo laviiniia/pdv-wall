@@ -19,7 +19,10 @@ export async function solicitarReset(_prev: RecuperarState, formData: FormData):
     await solicitarResetSenha(parsed.data.email, await urlBase(), await contextoRequisicao());
   } catch (error) {
     console.error("[recuperar-senha] falha ao processar solicitação", error);
-    return { erro: "Não foi possível enviar o e-mail agora. Tente novamente em instantes.", email: parsed.data.email };
+    return {
+      erro: "Não foi possível enviar o e-mail agora. Tente de novo em instantes ou peça a um gerente ou administrador uma senha temporária.",
+      email: parsed.data.email,
+    };
   }
 
   // Mesma resposta exista ou não o e-mail (não revela quem é cadastrado).

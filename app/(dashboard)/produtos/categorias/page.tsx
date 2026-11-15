@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Selo } from "@/components/produtos/Selos";
-import { getUsuarioAtual } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { PERMISSAO, temPermissao } from "@/lib/constants/roles";
 import { listarCategorias } from "@/lib/services/produtos.service";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,7 @@ export default async function CategoriasPage({ searchParams }: PageProps<"/produ
   const status = sp.status === "ativas" ? "ativas" : "todas";
   const ordenar = sp.ordenar === "produtos" ? "produtos" : "nome";
 
-  const usuario = await getUsuarioAtual();
+  const usuario = await exigirPermissao(PERMISSAO.PRODUTOS_VER);
   const podeGerenciar = temPermissao(usuario.permissoes, PERMISSAO.PRODUTOS_GERENCIAR);
   const categorias = await listarCategorias(status, ordenar);
   const msg = typeof sp.msg === "string" ? MENSAGENS[sp.msg] : undefined;

@@ -36,6 +36,20 @@ async function main() {
     },
   });
 
+  // Contas de desenvolvimento para testar cada perfil (senhas trocáveis por variável de ambiente).
+  for (const [perfil, nome, senhaPadrao] of [
+    ["gerente", "Gerente (dev)", "gerente123"],
+    ["operador", "Operador (dev)", "operador123"],
+  ] as const) {
+    const role = await prisma.role.findUniqueOrThrow({ where: { nome: perfil } });
+    const senhaPerfil = process.env[`SEED_${perfil.toUpperCase()}_PASSWORD`] ?? senhaPadrao;
+    await prisma.usuario.upsert({
+      where: { email: `${perfil}@pdv.local` },
+      update: {},
+      create: { nome, email: `${perfil}@pdv.local`, passwordHash: await bcrypt.hash(senhaPerfil, 10), roleId: role.id },
+    });
+  }
+
   const categorias = [
     { nome: "Lanches", corHex: "#F59E0B", icone: "🍔" },
     { nome: "Bebidas", corHex: "#0066CC", icone: "🥤" },
@@ -97,7 +111,7 @@ async function main() {
     },
   });
 
-  console.log(`Seed concluído. Login de desenvolvimento: ${email}`);
+  console.log(`Seed concluído. Logins de desenvolvimento: ${email}, gerente@pdv.local, operador@pdv.local`);
 }
 
 main()

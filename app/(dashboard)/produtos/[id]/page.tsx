@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Adicionais } from "@/components/produtos/Adicionais";
 import { ProdutoForm } from "@/components/produtos/ProdutoForm";
 import { Selo, SeloValidade } from "@/components/produtos/Selos";
-import { getUsuarioAtual } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { PERMISSAO, temPermissao } from "@/lib/constants/roles";
 import { getConfig } from "@/lib/services/configuracoes.service";
 import { listarAdicionais } from "@/lib/services/pedidos.service";
@@ -53,7 +53,7 @@ export default async function ProdutoPage({ params }: PageProps<"/produtos/[id]"
   const produtoId = Number(id);
   if (!Number.isInteger(produtoId) || produtoId <= 0) notFound();
 
-  const usuario = await getUsuarioAtual();
+  const usuario = await exigirPermissao(PERMISSAO.PRODUTOS_VER);
   const produto = await buscarProduto(produtoId);
   if (!produto) notFound();
 
@@ -92,6 +92,7 @@ export default async function ProdutoPage({ params }: PageProps<"/produtos/[id]"
         margemMinimaPct={financeiro.margemMinimaPct}
         tempoPadraoMin={vendas.tempoPreparoMin}
         podeEditar={podeGerenciar}
+        podeEditarPreco={temPermissao(usuario.permissoes, PERMISSAO.PRODUTOS_EDITAR_PRECO)}
       />
 
       <Adicionais

@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { brl, c, dataCurta, mesDoParametro, SeletorMes } from "@/components/financeiro/comum";
 import { BotaoCancelar } from "@/components/financeiro/BotaoCancelar";
 import { Selo } from "@/components/produtos/Selos";
-import { usuarioAtualOuNull } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { PERMISSAO, temPermissao } from "@/lib/constants/roles";
 import { categoriasDespesa, hojeISO, listarDespesas, rotuloCategoria } from "@/lib/services/financeiro.service";
 import { FORMAS_DESPESA } from "@/lib/validations/financeiro.schema";
@@ -15,8 +15,8 @@ export default async function DespesasPage({ searchParams }: PageProps<"/finance
   const sp = await searchParams;
   const mes = mesDoParametro(sp.mes, await hojeISO());
   const categoria = typeof sp.categoria === "string" && sp.categoria ? sp.categoria : undefined;
-  const [usuario, despesas, categorias] = await Promise.all([usuarioAtualOuNull(), listarDespesas(mes, categoria), categoriasDespesa()]);
-  const podeLancar = !!usuario && temPermissao(usuario.permissoes, PERMISSAO.FINANCEIRO_DESPESAS);
+  const [usuario, despesas, categorias] = await Promise.all([exigirPermissao(PERMISSAO.FINANCEIRO_VER), listarDespesas(mes, categoria), categoriasDespesa()]);
+  const podeLancar = temPermissao(usuario.permissoes, PERMISSAO.FINANCEIRO_DESPESAS);
   const ativas = despesas.filter((d) => !d.cancelada);
   const total = ativas.reduce((s, d) => s + c(d.valor), 0);
 

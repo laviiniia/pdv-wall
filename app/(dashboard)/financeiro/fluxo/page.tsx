@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { exigirPermissao } from "@/lib/auth/dal";
+import { PERMISSAO } from "@/lib/constants/roles";
 import { brl, mesDoParametro, nomeMes, SeletorMes } from "@/components/financeiro/comum";
 import { fluxoCaixaMes, hojeISO } from "@/lib/services/financeiro.service";
 import { cn } from "@/lib/utils";
@@ -10,6 +12,7 @@ const diaSemana = (d: string) =>
   new Date(`${d}T12:00:00Z`).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "UTC" });
 
 export default async function FluxoPage({ searchParams }: PageProps<"/financeiro/fluxo">) {
+  await exigirPermissao(PERMISSAO.FINANCEIRO_VER);
   const sp = await searchParams;
   const mes = mesDoParametro(sp.mes, await hojeISO());
   const f = await fluxoCaixaMes(mes);

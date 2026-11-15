@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { contextoRequisicao } from "@/lib/auth/contexto";
-import { getUsuarioAtual } from "@/lib/auth/dal";
+import { exigirPermissao, getUsuarioAtual } from "@/lib/auth/dal";
+import { PERMISSAO } from "@/lib/constants/roles";
+import { enviarEmail } from "@/lib/services/email.service";
 import { podeEditarSecao, salvarConfig } from "@/lib/services/configuracoes.service";
 import { ehSecao } from "@/lib/validations/configuracoes.schema";
 import type { EstadoForm } from "@/components/form/Formulario";
@@ -52,4 +54,22 @@ export async function salvar(_prev: ConfigFormState, formData: FormData): Promis
     ok: true,
     mensagem: r.alterados === 0 ? "Nada foi alterado." : `Configurações salvas (${r.alterados} campo(s) alterado(s)).`,
   };
+}
+
+/** Admin: envia um e-mail de teste para si mesmo, para conferir a configuração do Resend. */
+export async function enviarEmailTeste(): Promise<{ ok: boolean; mensagem: string }> {
+  const usuario = await exigirPermissao(PERMISSAO.CONFIG_EDITAR);
+  try {
+    const r = await enviarEmail({
+      para: usuario.email,
+      assunto: "Teste de envio - PDV Wall",
+      texto: `Olá ${usuario.nome.split(" ")[0]},\n\nSe você recebeu esta mensagem, o envio de e-mails do PDV Wall está funcionando.`,
+      html: `<p>Olá,</p><p>Se você recebeu esta mensagem, o envio de e-mails do PDV Wall está funcionando.</p>`,
+    });
+    return r.simulado
+      ? { ok: false, mensagem: "Resend não configurado: o e-mail foi só impresso no terminal do servidor." }
+      : { ok: true, mensagem: `E-mail enviado para ${usuario.email}. Confira a caixa de entrada (e o spam).` };
+  } catch (e) {
+    return { ok: false, mensagem: e instanceof Error ? e.message : "Falha desconhecida." };
+  }
 }

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { exigirPermissao } from "@/lib/auth/dal";
+import { PERMISSAO } from "@/lib/constants/roles";
 import Link from "next/link";
 import { brl, mesDoParametro, nomeMes, SeletorMes } from "@/components/financeiro/comum";
 import { hojeISO, indicadoresMes, mesAnterior, resumoContas } from "@/lib/services/financeiro.service";
@@ -30,6 +32,7 @@ function Card({ titulo, valor, children, destaque }: { titulo: string; valor: st
 }
 
 export default async function PainelFinanceiroPage({ searchParams }: PageProps<"/financeiro">) {
+  await exigirPermissao(PERMISSAO.FINANCEIRO_VER);
   const sp = await searchParams;
   const mes = mesDoParametro(sp.mes, await hojeISO());
   const [atual, anterior, contas] = await Promise.all([indicadoresMes(mes), indicadoresMes(mesAnterior(mes)), resumoContas()]);

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { exigirPermissao } from "@/lib/auth/dal";
+import { PERMISSAO } from "@/lib/constants/roles";
 import Link from "next/link";
 import { CabecalhoRelatorio } from "@/components/relatorios/Cabecalho";
 import { BarraFina, brl, num, pct, Secao, Variacao } from "@/components/relatorios/comum";
@@ -11,6 +13,7 @@ const ORDENS = { receita: "Receita", lucro: "Lucro", quantidade: "Quantidade", m
 type Ordem = keyof typeof ORDENS;
 
 export default async function VendasRelatorioPage({ searchParams }: PageProps<"/relatorios/vendas">) {
+  await exigirPermissao(PERMISSAO.RELATORIOS_VER);
   const sp = await searchParams;
   const filtro = await lerFiltro(sp);
   const ordem: Ordem = typeof sp.ordem === "string" && sp.ordem in ORDENS ? (sp.ordem as Ordem) : "receita";

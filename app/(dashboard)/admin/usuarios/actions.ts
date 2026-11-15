@@ -66,6 +66,7 @@ export async function criar(_prev: UsuarioFormState, formData: FormData): Promis
       criado: { id: r.id, nome: parsed.data.nome, email: parsed.data.email, senhaTemporaria: r.senhaTemporaria },
     };
   }
+  if (r.falhaEmail) redirect(`/admin/usuarios/${r.id}?msg=convite-falhou`);
   redirect(`/admin/usuarios?msg=${parsed.data.modoSenha === "link" ? "convite" : "criado"}`);
 }
 
@@ -98,7 +99,11 @@ export async function enviarLink(_prev: LinkState, formData: FormData): Promise<
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id)) return { mensagem: "Usuário inválido." };
 
-  await enviarLinkRedefinicao(id, autor, await urlBase(), await contextoRequisicao());
+  try {
+    await enviarLinkRedefinicao(id, autor, await urlBase(), await contextoRequisicao());
+  } catch (e) {
+    return { mensagem: `Não foi possível enviar o e-mail: ${e instanceof Error ? e.message : "erro desconhecido"}` };
+  }
   return {
     mensagem: "Se o usuário estiver ativo, ele vai receber o link por e-mail (máximo de 1 envio a cada 5 minutos).",
   };

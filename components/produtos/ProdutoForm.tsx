@@ -31,12 +31,15 @@ export function ProdutoForm({
   categorias,
   margemMinimaPct,
   podeEditar,
+  podeEditarPreco = true,
   tempoPadraoMin,
 }: {
   produto?: ProdutoEditavel;
   categorias: { id: number; nome: string; icone: string | null; ativa: boolean }[];
   margemMinimaPct: number;
   podeEditar: boolean;
+  /** Sem produtos.editar_preco, os preços de um produto existente ficam travados. */
+  podeEditarPreco?: boolean;
   /** Configurações › Vendas › tempo médio de preparo. */
   tempoPadraoMin: number;
 }) {
@@ -95,6 +98,7 @@ export function ProdutoForm({
           custo={produto ? numeroParaInput(produto.precoCusto) : ""}
           venda={produto ? numeroParaInput(produto.precoVenda) : ""}
           margemMinimaPct={margemMinimaPct}
+          bloqueado={!!produto && !podeEditarPreco}
         />
       </Grupo>
 

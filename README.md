@@ -28,7 +28,9 @@ npm run dev                 # http://localhost:3000
 
 Health check: <http://localhost:3000/api/health>
 
-Login de desenvolvimento (criado pelo seed): `admin@pdv.local` / `admin123`. Pode ser alterado com `SEED_ADMIN_EMAIL` e `SEED_ADMIN_PASSWORD`. O `.env.local` precisa de um `JWT_SECRET` com pelo menos 32 caracteres.
+Logins de desenvolvimento (criados pelo seed): `admin@pdv.local` / `admin123`, `gerente@pdv.local` / `gerente123` e `operador@pdv.local` / `operador123`, um por perfil. Mude com `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_GERENTE_PASSWORD` e `SEED_OPERADOR_PASSWORD` (não use essas contas em produção). O `.env.local` precisa de um `JWT_SECRET` com pelo menos 32 caracteres.
+
+**E-mail (Resend):** defina `RESEND_API_KEY` e `EMAIL_FROM` no `.env.local` (veja os comentários no `.env.example`) e confira em Configurações › Empresa › "Enviar e-mail de teste para mim". Sem eles, em desenvolvimento os e-mails são só impressos no terminal; falhas de envio aparecem em Auditoria › E-mail.
 
 **Recuperação de senha em desenvolvimento:** sem `RESEND_API_KEY` e `EMAIL_FROM`, o e-mail com o link de redefinição não é enviado, só aparece no terminal do `npm run dev`. Em produção esses dois são obrigatórios.
 
@@ -93,7 +95,8 @@ Convenções que vamos seguir conforme os módulos forem implementados (ver `doc
 - [x] Módulo 3 (parte 1): login/logout com JWT em cookie httpOnly, proteção de rotas (`proxy.ts` + `lib/auth/dal.ts`), limite de 5 tentativas/5 min, auditoria
 - [x] Módulo 3 (parte 2): recuperar/redefinir senha (link de uso único, 1h, derruba sessões antigas)
 - [x] Módulo 3 (parte 3): gestão de usuários em `/admin/usuarios` (criar, editar, desativar, bloquear, convite por link ou senha temporária), troca de senha obrigatória/voluntária em `/trocar-senha`, menu filtrado por permissão
-- [ ] Permissões finas por tela/ação nos demais módulos (usar `exigirPermissao` à medida que forem criados)
+- [x] Permissões finas por tela/ação: cada página, action e rota da API checa a própria permissão (não só o layout), seguindo a matriz do Módulo 3 — ver `docs/README.md`
+- [x] Auditoria em `/admin/auditoria` (filtros por período, módulo, usuário, nível e ação; detalhes de cada registro; CSV) e senha temporária para a equipe: gerente em `/equipe` (só operadores), admin na edição do usuário. Acessos negados ficam registrados
 - [x] Módulo 4 (parte 1): configurações de Empresa, Vendas, Estoque e Financeiro em `/configuracoes` (validação, padrões, permissão por seção, auditoria). Use `getConfig("vendas")` etc. nos outros módulos
 - [ ] Módulo 4 (parte 2): notificações, interface, backups/logs, integrações e upload de logo
 - [x] Módulo 2.1: produtos e categorias em `/produtos` (cadastro, edição, desativar/reativar, margem ao vivo, busca/filtros/ordenação/paginação, alertas de margem e validade, histórico de alterações)

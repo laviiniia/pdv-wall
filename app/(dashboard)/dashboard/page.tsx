@@ -18,7 +18,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   const aviso = (["senha", "erro"] as const).map((k) => AVISOS[`${k}:${sp[k]}`]).find(Boolean);
 
   const usuario = await getUsuarioAtual();
-  const veEstoque = temPermissao(usuario.permissoes, PERMISSAO.ESTOQUE_VER);
+  const veEstoque = temPermissao(usuario.permissoes, PERMISSAO.ESTOQUE_HISTORICO);
   const [produtos, categorias, usuarios, alertas] = await Promise.all([
     prisma.produto.count({ where: { status: "ativo" } }),
     prisma.categoria.count({ where: { ativa: true } }),

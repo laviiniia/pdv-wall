@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { exigirPermissao } from "@/lib/auth/dal";
+import { PERMISSAO } from "@/lib/constants/roles";
 import { CabecalhoRelatorio } from "@/components/relatorios/Cabecalho";
 import { BarraFina, brl, pct, Secao, Variacao } from "@/components/relatorios/comum";
 import { analisar, lerFiltro, variacao } from "@/lib/services/relatorios.service";
@@ -18,6 +20,7 @@ const DIAS = [
 ] as const;
 
 export default async function ComportamentoPage({ searchParams }: PageProps<"/relatorios/comportamento">) {
+  await exigirPermissao(PERMISSAO.RELATORIOS_VER);
   const filtro = await lerFiltro(await searchParams);
   const a = await analisar(filtro.atual);
   const b = filtro.comparado ? await analisar(filtro.comparado) : null;

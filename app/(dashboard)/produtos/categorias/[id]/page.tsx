@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CategoriaForm } from "@/components/produtos/CategoriaForm";
 import { ExcluirCategoria } from "@/components/produtos/ExcluirCategoria";
-import { getUsuarioAtual } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { PERMISSAO, temPermissao } from "@/lib/constants/roles";
 import { buscarCategoria } from "@/lib/services/produtos.service";
 
@@ -16,7 +16,7 @@ export default async function CategoriaPage({ params }: PageProps<"/produtos/cat
   const categoriaId = Number(id);
   if (!Number.isInteger(categoriaId) || categoriaId <= 0) notFound();
 
-  const usuario = await getUsuarioAtual();
+  const usuario = await exigirPermissao(PERMISSAO.PRODUTOS_VER);
   const categoria = await buscarCategoria(categoriaId);
   if (!categoria) notFound();
   const podeGerenciar = temPermissao(usuario.permissoes, PERMISSAO.PRODUTOS_GERENCIAR);

@@ -80,7 +80,27 @@ export async function usuarioAtualOuNull() {
 
 /** Use em páginas/actions que exigem uma permissão específica. */
 export async function exigirPermissao(permissao: string) {
+  return exigirAlguma([permissao]);
+}
+
+/** Exige pelo menos uma das permissões; registra ACESSO_NEGADO na auditoria quando falta. */
+export async function exigirAlguma(permissoes: string[]) {
   const usuario = await getUsuarioAtual();
-  if (!temPermissao(usuario.permissoes, permissao)) redirect("/dashboard?erro=sem-permissao");
+  if (!permissoes.some((p) => temPermissao(usuario.permissoes, p))) {
+    await prisma.auditoria
+      .create({
+        data: {
+          acao: "ACESSO_NEGADO",
+          modulo: "PERMISSOES",
+          nivel: "WARN",
+          usuarioId: usuario.id,
+          emailUsuario: usuario.email,
+          sucesso: false,
+          dadosModificados: { permissao_exigida: permissoes.join(" | "), perfil: usuario.role.nome },
+        },
+      })
+      .catch(() => {}); // a auditoria nunca impede a resposta
+    redirect("/dashboard?erro=sem-permissao");
+  }
   return usuario;
 }

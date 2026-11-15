@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { exigirPermissao } from "@/lib/auth/dal";
+import { PERMISSAO } from "@/lib/constants/roles";
 import { CabecalhoRelatorio } from "@/components/relatorios/Cabecalho";
 import { brl, pct, Variacao } from "@/components/relatorios/comum";
 import { analisar, lerFiltro, variacao } from "@/lib/services/relatorios.service";
@@ -9,6 +11,7 @@ export const metadata: Metadata = { title: "DRE" };
 type Linha = { rotulo: string; chave: string; valor: number; anterior?: number; nivel: "total" | "sub" | "item"; sinal?: "−"; nota?: string };
 
 export default async function DrePage({ searchParams }: PageProps<"/relatorios/dre">) {
+  await exigirPermissao(PERMISSAO.RELATORIOS_VER);
   const filtro = await lerFiltro(await searchParams);
   const a = await analisar(filtro.atual);
   const b = filtro.comparado ? await analisar(filtro.comparado) : null;

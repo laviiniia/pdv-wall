@@ -4,7 +4,7 @@ import { BotaoCancelar } from "@/components/financeiro/BotaoCancelar";
 import { brl, c, dataCurta } from "@/components/financeiro/comum";
 import { PagarConta } from "@/components/financeiro/PagarConta";
 import { Selo } from "@/components/produtos/Selos";
-import { usuarioAtualOuNull } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { PERMISSAO, temPermissao } from "@/lib/constants/roles";
 import { type FiltroContas, hojeISO, listarContas, resumoContas, rotuloCategoria } from "@/lib/services/financeiro.service";
 import { cn } from "@/lib/utils";
@@ -17,8 +17,8 @@ const FILTROS: Record<FiltroContas, string> = { abertas: "Em aberto", vencidas: 
 export default async function ContasPage({ searchParams }: PageProps<"/financeiro/contas">) {
   const sp = await searchParams;
   const filtro = typeof sp.filtro === "string" && sp.filtro in FILTROS ? (sp.filtro as FiltroContas) : "abertas";
-  const [usuario, contas, resumo, hoje] = await Promise.all([usuarioAtualOuNull(), listarContas(filtro), resumoContas(), hojeISO()]);
-  const podePagar = !!usuario && temPermissao(usuario.permissoes, PERMISSAO.FINANCEIRO_PAGAR);
+  const [usuario, contas, resumo, hoje] = await Promise.all([exigirPermissao(PERMISSAO.FINANCEIRO_VER), listarContas(filtro), resumoContas(), hojeISO()]);
+  const podePagar = temPermissao(usuario.permissoes, PERMISSAO.FINANCEIRO_PAGAR);
 
   return (
     <>

@@ -33,6 +33,7 @@ export const PERMISSOES_PADRAO: Record<RoleNome, { descricao: string; permissoes
       "estoque.ver",
       "estoque.criar_entrada",
       "estoque.ajustar",
+      "estoque.historico",
       "financeiro.ver",
       "financeiro.criar_despesa",
       "financeiro.pagar_contas",
@@ -41,6 +42,8 @@ export const PERMISSOES_PADRAO: Record<RoleNome, { descricao: string; permissoes
       "caixa.gerenciar",
       "relatorios.ver",
       "configuracoes.editar_operacional",
+      "auditoria.ver_vendas",
+      "usuarios.redefinir_senha",
     ],
   },
   operador: {
@@ -63,12 +66,21 @@ export const PERMISSOES_PADRAO: Record<RoleNome, { descricao: string; permissoes
 // Permissões usadas pelas telas de administração (admin tem "*").
 export const PERMISSAO = {
   USUARIOS_GERENCIAR: "usuarios.gerenciar",
+  /** Gerar senha temporária para operadores (gerente; admin faz para todos). */
+  USUARIOS_REDEFINIR_SENHA: "usuarios.redefinir_senha",
+  /** Toda a auditoria (admin). */
+  AUDITORIA_VER: "auditoria.ver",
+  /** Auditoria de vendas, pedidos e caixa (gerente). */
+  AUDITORIA_VER_VENDAS: "auditoria.ver_vendas",
   /** Todas as seções de configurações (admin). */
   CONFIG_EDITAR: "configuracoes.editar",
   /** Seções operacionais de configurações, ex.: estoque (gerente). */
   CONFIG_EDITAR_OPERACIONAL: "configuracoes.editar_operacional",
+  PRODUTOS_VER: "produtos.ver",
   /** Criar, editar, desativar e reativar produtos e categorias (MODULO_2_1: admin e gerente). */
   PRODUTOS_GERENCIAR: "produtos.gerenciar",
+  /** Alterar preço de custo/venda de produto existente (matriz do MODULO_3). */
+  PRODUTOS_EDITAR_PRECO: "produtos.editar_preco",
   // Vendas (MODULO_2_2 e matriz do MODULO_3)
   VENDAS_CRIAR: "vendas.criar",
   /** Ver todas as vendas (gerente). */
@@ -85,6 +97,8 @@ export const PERMISSAO = {
   MESAS_GERENCIAR: "mesas.gerenciar",
   // Estoque (MODULO_2_4)
   ESTOQUE_VER: "estoque.ver",
+  /** Alertas, valor do estoque e histórico de movimentações (matriz: operador não vê). */
+  ESTOQUE_HISTORICO: "estoque.historico",
   ESTOQUE_ENTRADA: "estoque.criar_entrada",
   /** Saída manual, ajuste e inventário (gerente). */
   ESTOQUE_AJUSTAR: "estoque.ajustar",
